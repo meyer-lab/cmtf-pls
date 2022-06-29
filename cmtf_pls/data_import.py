@@ -76,11 +76,11 @@ def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
         )
 
     factors_kr = khatri_rao(x_factors, skip_matrix=0)
-    x_train = tl.dot(x_factors[0], factors_kr.T)
-    x_train = tl.fold(x_train, 0, train_dimensions)
-    x_train += rng.normal(0, error, size=train_dimensions)
+    x = tl.dot(x_factors[0], factors_kr.T)
+    x = tl.fold(x, 0, train_dimensions)
+    x += rng.normal(0, error, size=train_dimensions)
 
-    y_train = tl.dot(y_factors[0], y_factors[1].T)
-    y_train += rng.normal(0, error, size=(train_dimensions[0], n_response))
+    y = tl.dot(y_factors[0], y_factors[1].T)
+    y += rng.normal(0, error, size=(train_dimensions[0], n_response))
 
-    return x_train, y_train, x_factors, y_factors
+    return x, y, x_factors, y_factors
