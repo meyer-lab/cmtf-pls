@@ -420,7 +420,7 @@ viz = ["matplotlib", "seaborn", "nc-time-axis"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "5c8636e66f4305ed060592dbeba4bddbcd63b106906be10aa044296d15f339d5"
+content-hash = "7185dd8d11b8faa07561201f987e906de38b475238ab5540555f7bf031506afa"
 
 [metadata.files]
 atomicwrites = [
