@@ -33,9 +33,6 @@ def wold_nipals(Xo, Yo, num_comp = 2):
         Q[:, a] = Y.T @ U[:, a] / norm(U[:, a]) ** 2
         X -= np.outer(T[:, a], P[:, a])
         Y -= np.outer(T[:, a], C[:, a])
-        print("R2X", calcR2X(Xo, T @ P.T))
-        #print("R2Y", calcR2X(Yo, U @ Q.T))
-        print("Q2Y", calcR2X(Yo, T @ C.T))
     return T, U, W, P, C, Q
 
 def tensorPLS(X, Y):
