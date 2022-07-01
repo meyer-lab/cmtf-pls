@@ -1,5 +1,8 @@
 import numpy as np
 from numpy.linalg import norm
+from tensorly.tenalg import mode_dot
+from numpy.linalg import pinv
+from tensorly.cp_tensor import CPTensor
 
 def calcR2X(X, Xhat):
     mask = np.isfinite(X)
@@ -35,8 +38,25 @@ def wold_nipals(Xo, Yo, num_comp = 2):
         Y -= np.outer(T[:, a], C[:, a])
     return T, U, W, P, C, Q
 
-def tensorPLS(X, Y):
-    pass
+def tensorPLS(Xo, Yo, num_comp = 2):
+    X, Y = Xo.copy(), Yo.copy()
+    X -= np.mean(X, axis=0)
+    Y -= np.mean(Y, axis=0)
+    assert X.ndim == 3
+    assert Y.ndim == 1
+    Xfacs = [np.zeros((l, num_comp)) for l in X.shape]
+    assert X.shape[0] == Y.shape[0]
+    for a in range(num_comp):
+        svd_res = np.linalg.svd(mode_dot(X, Y, 0))
+        Xfacs[1][:, a] = svd_res[0][:, 0]
+        Xfacs[2][:, a] = svd_res[2].T[:, 0]
+        Tt = X.copy()
+        Tt = mode_dot(Tt, Xfacs[1][:, a], 1)
+        Tt = mode_dot(Tt, Xfacs[2][:, a], 1)
+        Xfacs[0][:, a] = Tt
+        X -= CPTensor((None, Xfacs)).to_tensor()
+        Y -= Xfacs[0] @ pinv(Xfacs[0]) @ Y
+    return Xfacs
 
 
 
