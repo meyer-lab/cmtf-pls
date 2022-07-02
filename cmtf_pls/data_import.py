@@ -1,35 +1,39 @@
 import numpy as np
 import tensorly as tl
-from tensorly.tenalg import khatri_rao
 
 
-def make_synthetic_test(factors: list, test_samples: int, error: float = 0,
-                        seed: int = 215):
+def make_synthetic_test(cp_tensor: tl.cp_tensor, test_samples: int,
+                        error: float = 0, seed: int = 215):
     """
     Generates test set from given factors.
 
     Parameters:
-        factors (list[np.array]): CP factors; first element is assumed to be
-            subject factors
+        cp_tensor (tl.cp_tensor): CP tensor
         test_samples (int): samples in testing set
         error (float, default: 0): standard error of added gaussian noise
         seed (int, default: 215): seed for random number generator
     """
     rng = np.random.default_rng(seed)
-    dimensions = (test_samples, *(matrix.shape[0] for matrix in factors[1:]))
 
-    factors_kr = khatri_rao(factors, skip_matrix=0)
-    test_factor = rng.normal(
+    test_factors = cp_tensor.factors
+    test_factors[0] = rng.normal(
         0,
         1,
-        size=(test_samples, factors[0].shape[1])
+        size=(test_samples, cp_tensor.rank)
+    )
+    test_tensor = tl.cp_tensor.CPTensor((None, test_factors))
+    test_tensor.y_factor = cp_tensor.y_factor
+
+    x_test = tl.cp_to_tensor(test_tensor)
+    x_test += rng.normal(0, error, size=test_tensor.shape)
+    y_test = tl.dot(test_tensor.factors[0], cp_tensor.y_factor.T)
+    y_test += rng.normal(
+        0,
+        error,
+        size=y_test.shape
     )
 
-    tensor = tl.dot(test_factor, factors_kr.T)
-    tensor = tl.fold(tensor, 0, dimensions)
-    tensor += rng.normal(0, error, size=dimensions)
-
-    return tensor, test_factor
+    return x_test, y_test, test_tensor
 
 
 def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
@@ -53,18 +57,11 @@ def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
             size=(train_dimensions[0], n_latent)
         )
     ]
-    y_factors = [
-        rng.normal(
-            0,
-            1,
-            size=(train_dimensions[0], n_latent)
-        ),
-        rng.normal(
-            0,
-            1,
-            size=(n_response, n_latent)
-        )
-    ]
+    y_factor = rng.normal(
+        0,
+        1,
+        size=(n_response, n_latent)
+    )
 
     for dimension in train_dimensions[1:]:
         x_factors.append(
@@ -75,12 +72,13 @@ def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
             )
         )
 
-    factors_kr = khatri_rao(x_factors, skip_matrix=0)
-    x = tl.dot(x_factors[0], factors_kr.T)
-    x = tl.fold(x, 0, train_dimensions)
+    cp_tensor = tl.cp_tensor.CPTensor((None, x_factors))
+    cp_tensor.y_factor = y_factor
+
+    x = tl.cp_to_tensor(cp_tensor)
     x += rng.normal(0, error, size=train_dimensions)
 
-    y = tl.dot(y_factors[0], y_factors[1].T)
+    y = tl.dot(cp_tensor.factors[0], cp_tensor.y_factor.T)
     y += rng.normal(0, error, size=(train_dimensions[0], n_response))
 
-    return x, y, x_factors, y_factors
+    return x, y, cp_tensor
