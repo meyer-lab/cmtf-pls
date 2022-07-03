@@ -12,6 +12,11 @@ def make_synthetic_test(cp_tensor: tl.cp_tensor, test_samples: int,
         test_samples (int): samples in testing set
         error (float, default: 0): standard error of added gaussian noise
         seed (int, default: 215): seed for random number generator
+
+    Returns:
+        x_test (np.array): tensor of measurements
+        y_test (np.array): response variables
+        test_tensor (tl.cp_tensor): CP tensor of x_test, y_test
     """
     rng = np.random.default_rng(seed)
 
@@ -47,6 +52,11 @@ def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
         n_latent (int): number of latent variables in synthetic data
         error (float, default: 0): standard error of added gaussian noise
         seed (int, default: 215): seed for random number generator
+
+    Returns:
+        x (np.array): tensor of measurements
+        y (np.array): response variables
+        cp_tensor (tl.cp_tensor): CP tensor of x, y
     """
     rng = np.random.default_rng(seed)
 
