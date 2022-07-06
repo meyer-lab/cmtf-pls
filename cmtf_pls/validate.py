@@ -4,16 +4,7 @@ import seaborn as sns
 from .tpls import *
 from numpy.linalg import pinv
 
-
-def genRandXY(n=10, k=6, m=4):
-    X = np.random.rand(n, k)
-    Y = np.random.rand(n, m)
-    X -= np.mean(X, axis=0)
-    Y -= np.mean(Y, axis=0)
-    return X, Y
-
-
-def R2Xplots(X, Y, method = wold_nipals, n = 6):
+def plotTensorPLS(X, Y, method = wold_nipals, n = 6):
     R2Xs, R2Ys, Q2Ys = [], [], []
     RQ2Ys = []
     looXs = [X[np.arange(X.shape[0]) != i,:] for i in range(X.shape[0])]
