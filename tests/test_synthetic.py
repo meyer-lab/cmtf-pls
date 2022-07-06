@@ -1,6 +1,5 @@
 import numpy as np
-
-from cmtf_pls.data_import import import_synthetic, make_synthetic_test
+from cmtf_pls.synthetic import import_synthetic, make_synthetic_test
 
 TENSOR_DIMENSIONS = (100, 38, 65)
 N_RESPONSE = 4
@@ -16,7 +15,7 @@ def test_synthetic_dimensions():
     )
 
     assert all([factor.shape[1] == N_LATENT for factor in cp_tensor.factors])
-    assert all([factor.shape[1] == N_LATENT for factor in cp_tensor.y_factor])
+    assert cp_tensor.y_factor.shape[1] == N_LATENT
     assert x.shape == TENSOR_DIMENSIONS
     assert y.shape == (TENSOR_DIMENSIONS[0], N_RESPONSE)
 

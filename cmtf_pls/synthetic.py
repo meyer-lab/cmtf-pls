@@ -21,22 +21,14 @@ def make_synthetic_test(cp_tensor: tl.cp_tensor, test_samples: int,
     rng = np.random.default_rng(seed)
 
     test_factors = cp_tensor.factors
-    test_factors[0] = rng.normal(
-        0,
-        1,
-        size=(test_samples, cp_tensor.rank)
-    )
+    test_factors[0] = rng.normal(0, 1, size=(test_samples, cp_tensor.rank))
     test_tensor = tl.cp_tensor.CPTensor((None, test_factors))
     test_tensor.y_factor = cp_tensor.y_factor
 
     x_test = tl.cp_to_tensor(test_tensor)
     x_test += rng.normal(0, error, size=test_tensor.shape)
     y_test = tl.dot(test_tensor.factors[0], cp_tensor.y_factor.T)
-    y_test += rng.normal(
-        0,
-        error,
-        size=y_test.shape
-    )
+    y_test += rng.normal(0, error, size=y_test.shape)
 
     return x_test, y_test, test_tensor
 
@@ -60,27 +52,11 @@ def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
     """
     rng = np.random.default_rng(seed)
 
-    x_factors = [
-        rng.normal(
-            0,
-            1,
-            size=(train_dimensions[0], n_latent)
-        )
-    ]
-    y_factor = rng.normal(
-        0,
-        1,
-        size=(n_response, n_latent)
-    )
+    x_factors = [rng.normal(0, 1, size=(train_dimensions[0], n_latent))]
+    y_factor = rng.normal(0, 1, size=(n_response, n_latent))
 
     for dimension in train_dimensions[1:]:
-        x_factors.append(
-            rng.normal(
-                0,
-                1,
-                size=(dimension, n_latent)
-            )
-        )
+        x_factors.append(rng.normal(0, 1, size=(dimension, n_latent)))
 
     cp_tensor = tl.cp_tensor.CPTensor((None, x_factors))
     cp_tensor.y_factor = y_factor

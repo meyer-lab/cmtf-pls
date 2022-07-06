@@ -12,7 +12,7 @@ tensorly = "^0.7.0"
 tensorpack = {git = "https://github.com/meyer-lab/tensorpack.git", rev = "main"}
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^7.0"
 tensordata = {git = "https://github.com/meyer-lab/tensordata.git", branch = "main"}
 
 [build-system]
