@@ -11,8 +11,9 @@ def calcR2X(X, Xhat):
     bottom = np.linalg.norm(xIn) ** 2.0
     return 1 - top / bottom
 
-def wold_nipals(Xo, Yo, num_comp = 2):
+def TwoModePLS(Xo, Yo, num_comp = 2):
     """
+    Adapted from Wold's NIPALS algorithm
     X = T P' + errors
     Y = U Q' + errors = T C' + errors
     """
@@ -38,7 +39,7 @@ def wold_nipals(Xo, Yo, num_comp = 2):
         Y -= np.outer(T[:, a], C[:, a])
     return T, U, W, P, C, Q
 
-def tensorPLS(Xo, Yo, num_comp = 2):
+def ThreeModePLS(Xo, Yo, num_comp = 2):
     X, Y = Xo.copy(), Yo.copy()
     X -= np.mean(X, axis=0)
     Y -= np.mean(Y, axis=0)
@@ -61,10 +62,10 @@ def tensorPLS(Xo, Yo, num_comp = 2):
 
 
 
-###########  DEPRECATED CODE BELOW  ############
+###########  BACKUP CODE BELOW  ############
 
-def _wold_nipals0(Xo, Yo, num_comp = 2, eps = 1e-7, max_iter = 100):
-    """ Deprecated. Kept here only for testing """
+def _TwoModePLS_v2(Xo, Yo, num_comp = 2, eps = 1e-7, max_iter = 100):
+    """ Kept here only for testing """
     X, Y = Xo.copy(), Yo.copy()
     X -= np.mean(X, axis=0)
     Y -= np.mean(Y, axis=0)
