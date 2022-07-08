@@ -1,8 +1,9 @@
 import numpy as np
 from numpy.linalg import norm
-from tensorly.tenalg import mode_dot
+from tensorly.tenalg import mode_dot, multi_mode_dot
 from numpy.linalg import pinv
 from tensorly.cp_tensor import CPTensor
+from tensorly.decomposition import parafac
 
 def calcR2X(X, Xhat):
     mask = np.isfinite(X)
@@ -58,6 +59,47 @@ def ThreeModePLS(Xo, Yo, num_comp = 2):
         X -= CPTensor((None, Xfacs)).to_tensor()
         Y -= Xfacs[0] @ pinv(Xfacs[0]) @ Y
     return Xfacs
+
+
+def FourModePLS(Xo, Yo, num_comp=5, tol = 1e-4):
+    assert Xo.shape[0] == Yo.shape[0]
+    assert Yo.ndim == 2
+    Xo -= np.mean(Xo, axis=0)
+    Yo -= np.mean(Yo, axis=0)
+    X, Y = Xo.copy(), Yo.copy()
+
+    Xfacs = [np.zeros((l, num_comp)) for l in X.shape]  # T, ...
+    Yfacs = [np.tile(Y[:, [0]], num_comp), np.zeros((Y.shape[1], num_comp))]  # U, Q
+
+    for a in range(num_comp):
+        oldU = np.ones_like(Yfacs[0][:, a]) * np.inf
+        for iter in range(100):
+            Z = np.einsum("i...,i...->...", X, Yfacs[0][:, a])
+            Z_CP = parafac(Z, 1)
+            for ii in range(Z.ndim):
+                Xfacs[ii+1][:, a] = Z_CP.factors[ii][:,0] / norm(Z_CP.factors[ii][:,0])
+
+            Xfacs[0][:, a] = multi_mode_dot(X, [ff[:, 0] for ff in Xfacs[1:]], range(1, X.ndim))
+            Yfacs[1][:, a] = Y.T @ Xfacs[0][:, a]
+            Yfacs[1][:, a] /= norm(Yfacs[1][:, a])
+            Yfacs[0][:, a] = Y @ Yfacs[1][:, a]
+            if norm(oldU - Yfacs[0][:, a]) < tol:
+                print("Comp {}: converged after {} iterations".format(a, iter))
+                break
+            oldU = Yfacs[0][:, a].copy()
+
+        X -= CPTensor((None, Xfacs)).to_tensor()
+        Y -= Xfacs[0] @ np.outer((pinv(Xfacs[0]) @ oldU), (Yfacs[1][:, a]).T)
+
+        print("Comp {}: R2X = {}, R2Y = {}".format(a,
+                                                   calcR2X(Xo, CPTensor((None, Xfacs)).to_tensor()),
+                                                   calcR2X(Yo, CPTensor((None, Yfacs)).to_tensor())))
+
+        pass
+
+
+
+    pass
 
 
 
