@@ -16,4 +16,4 @@ jobs:
     - name: Install dependencies
       run: poetry install --no-root
     - name: Test with pytest
-      run: make coverage.xml
+      run: make test
