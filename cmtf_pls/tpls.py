@@ -1,4 +1,4 @@
-from tensorly.decomposition import parafac
+from tensorly.decomposition import parafac, tucker
 from ._pls_tensor import *
 
 class NModePLS(PLSTensor):
@@ -13,15 +13,15 @@ class NModePLS(PLSTensor):
         assert Y.ndim == 2
 
         self.Xfacs = [np.zeros((l, self.num_comp)) for l in X.shape]  # T, ...
-        self.Yfacs = [np.tile(Y[:, [0]], self.num_comp), np.zeros((Y.shape[1], self.num_comp))]  # U, Q
+        self.Yfacs = [np.tile(Y[:, [0]], self.num_comp), np.zeros((Y.shape[1], self.num_comp))]  # U takes 1st col of Y
 
         for a in range(self.num_comp):
             oldU = np.ones_like(self.Yfacs[0][:, a]) * np.inf
             for iter in range(100):
                 Z = np.einsum("i...,i...->...", X, self.Yfacs[0][:, a])
-                Z_CP = parafac(Z, 1)  # TODO: CP cannot guarantee maximization
+                Z_comp = tucker(Z, 1)[1]
                 for ii in range(Z.ndim):
-                    self.Xfacs[ii + 1][:, a] = Z_CP.factors[ii][:, 0] / norm(Z_CP.factors[ii][:, 0])
+                    self.Xfacs[ii + 1][:, a] = Z_comp[ii].flatten()
 
                 self.Xfacs[0][:, a] = multi_mode_dot(X, [ff[:, 0] for ff in self.Xfacs[1:]], range(1, X.ndim))
                 self.Yfacs[1][:, a] = Y.T @ self.Xfacs[0][:, a]

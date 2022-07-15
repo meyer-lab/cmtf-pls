@@ -16,12 +16,12 @@ def plotTensorPLS(pls, X, Y, n = 6):
             for j in range(X.shape[0]):
                 pls_loo = pls(looXs[j], looYs[j], rr)
                 pls_loo.fit()
-                predY[j, :] = pls_loo.predict(X[j, :])
+                predY[j, :] = pls_loo.predict(X[[j], :])
             Q2Ys.append(calcR2X(Y, predY))
         except NotImplementedError:
             pass
     try:
-        pls_loo.predict(X[0, :])
+        pls_loo.predict(X)
     except NotImplementedError:
         print("Prediction has not been implemented yet")
         df = pd.DataFrame({"Component": range(1, n + 1), "R2X": R2Xs, "R2Y": R2Ys})

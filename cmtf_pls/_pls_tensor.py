@@ -50,7 +50,7 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
         raise NotImplementedError
 
     def predict(self, Xnew):
-        assert self.X.shape[1:] == Xnew.shape[1:]
+        assert self.X.shape[1:] == Xnew.shape[1:], "X shape is {}, while new X shape is {}".format(self.X.shape, Xnew.shape)
         raise NotImplementedError
 
     def x_recover(self):
