@@ -1,21 +1,22 @@
-# include all packages, including those needed for the children class
+# include all packages, including those needed for the children classes
 import numpy as np
 from collections.abc import Mapping
 from abc import ABCMeta
 from tensorly.cp_tensor import CPTensor
-from tensorly.tenalg import mode_dot, multi_mode_dot
 from numpy.linalg import pinv, norm
+from tensorly.tenalg import mode_dot, multi_mode_dot
+
 
 def calcR2X(X, Xhat):
     mask = np.isfinite(X)
     xIn = np.nan_to_num(X)
-    top = np.linalg.norm(Xhat * mask - xIn) ** 2.0
-    bottom = np.linalg.norm(xIn) ** 2.0
+    top = norm(Xhat * mask - xIn) ** 2.0
+    bottom = norm(xIn) ** 2.0
     return 1 - top / bottom
 
 class PLSTensor(Mapping, metaclass=ABCMeta):
     """ Base class for all variants of tensor PLS """
-    def __init__(self, X:np.ndarray, Y:np.ndarray, num_comp:int):
+    def __init__(self, X:np.ndarray, Y:np.ndarray, num_comp:int, *args, **kwargs):
         super().__init__()
         assert X.shape[0] == Y.shape[0]
         assert Y.ndim <= 2
@@ -49,6 +50,7 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
         raise NotImplementedError
 
     def predict(self, Xnew):
+        assert self.X.shape[1:] == Xnew.shape[1:]
         raise NotImplementedError
 
     def x_recover(self):
