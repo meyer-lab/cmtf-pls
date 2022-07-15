@@ -5,9 +5,11 @@ class NModePLS(PLSTensor):
     def __init__(self, *args):
         super().__init__(*args)
 
-    def fit(self, tol=1e-7, max_iter=100):
+    def fit(self, tol=1e-10, max_iter=100):
         self.preprocess()
         X, Y = self.X.copy(), self.Y.copy()
+        if Y.ndim == 1:
+            Y = Y.reshape(-1, 1).shape
         assert Y.ndim == 2
 
         self.Xfacs = [np.zeros((l, self.num_comp)) for l in X.shape]  # T, ...
