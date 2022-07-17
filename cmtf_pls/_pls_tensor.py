@@ -16,15 +16,13 @@ def calcR2X(X, Xhat):
 
 class PLSTensor(Mapping, metaclass=ABCMeta):
     """ Base class for all variants of tensor PLS """
-    def __init__(self, X:np.ndarray, Y:np.ndarray, num_comp:int, *args, **kwargs):
+    def __init__(self, num_comp:int, *args, **kwargs):
         super().__init__()
-        assert X.shape[0] == Y.shape[0]
-        assert Y.ndim <= 2
-        self.Xdim = X.ndim
-        self.X = X
-        self.Y = Y
-        self.Xfacs = [np.zeros((l, num_comp)) for l in X.shape]
-        self.Yfacs = [np.zeros((l, num_comp)) for l in Y.shape]
+        self.Xdim = 0
+        self.X = None
+        self.Y = None
+        self.Xfacs = None
+        self.Yfacs = None
         self.num_comp = num_comp
 
     def __getitem__(self, index):
