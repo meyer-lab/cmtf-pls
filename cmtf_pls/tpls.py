@@ -9,7 +9,7 @@ class NModePLS(PLSTensor):
         self.preprocess()
         X, Y = self.X.copy(), self.Y.copy()
         if Y.ndim == 1:
-            Y = Y.reshape(-1, 1).shape
+            Y = Y.reshape(-1, 1)
         assert Y.ndim == 2
 
         self.Xfacs = [np.zeros((l, self.num_comp)) for l in X.shape]  # T, ...
@@ -19,7 +19,7 @@ class NModePLS(PLSTensor):
             oldU = np.ones_like(self.Yfacs[0][:, a]) * np.inf
             for iter in range(100):
                 Z = np.einsum("i...,i...->...", X, self.Yfacs[0][:, a])
-                Z_comp = tucker(Z, 1)[1]
+                Z_comp = tucker(Z, 1)[1] if Z.ndim >= 2 else [Z / norm(Z)]
                 for ii in range(Z.ndim):
                     self.Xfacs[ii + 1][:, a] = Z_comp[ii].flatten()
 

@@ -36,7 +36,7 @@ class TwoModePLS(PLSTensor):
         self.C = C
 
     def fit_v2(self, tol=1e-7, max_iter=100):
-        """ Kept here only for testing """
+        """ Kept here only for testing. Tested equivalent to self.fit() """
         self.preprocess()
         X, Y = self.X.copy(), self.Y.copy()
         n, k, m = X.shape[0], X.shape[1], Y.shape[1]

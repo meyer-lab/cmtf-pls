@@ -8,6 +8,9 @@ from tensorly.tenalg import mode_dot, multi_mode_dot
 
 
 def calcR2X(X, Xhat):
+    if (Xhat.ndim == 2) and (X.dim == 1):
+        X = X.reshape(-1, 1)
+    assert X.shape == Xhat.shape
     mask = np.isfinite(X)
     xIn = np.nan_to_num(X)
     top = norm(Xhat * mask - xIn) ** 2.0
@@ -57,7 +60,7 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
         return CPTensor((None, self.Xfacs)).to_tensor()
 
     def y_recover(self):
-        if self.Y.ndim >= 2:
+        if len(self.Yfacs) >= 2:
             return CPTensor((None, self.Yfacs)).to_tensor()
         else:
             return self.Yfacs[0]
