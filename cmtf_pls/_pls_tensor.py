@@ -75,8 +75,8 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
 
 
     def predict(self, to_predict):
-        assert self.X.shape[1:] == to_predict.shape[1:], \
-            f"Training tensor shape is {self.X.shape}, while new tensor " \
+        assert self.original_X.shape[1:] == to_predict.shape[1:], \
+            f"Training tensor shape is {self.original_X.shape}, while new tensor " \
             f"shape is {to_predict.shape}"
         to_predict -= self.X_mean
         factors_kr = khatri_rao(self.X_factors, skip_matrix=0)
