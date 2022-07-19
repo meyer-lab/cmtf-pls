@@ -12,10 +12,10 @@ class NModePLS(PLSTensor):
             Y = Y.reshape(-1, 1)
         assert Y.ndim == 2
 
-        self.Xfacs = [np.zeros((l, self.num_comp)) for l in X.shape]  # T, ...
-        self.Yfacs = [np.tile(Y[:, [0]], self.num_comp), np.zeros((Y.shape[1], self.num_comp))]  # U takes 1st col of Y
+        self.Xfacs = [np.zeros((l, self.n_components)) for l in X.shape]  # T, ...
+        self.Yfacs = [np.tile(Y[:, [0]], self.n_components), np.zeros((Y.shape[1], self.n_components))]  # U takes 1st col of Y
 
-        for a in range(self.num_comp):
+        for a in range(self.n_components):
             oldU = np.ones_like(self.Yfacs[0][:, a]) * np.inf
             for iter in range(max_iter):
                 Z = np.einsum("i...,i...->...", X, self.Yfacs[0][:, a])

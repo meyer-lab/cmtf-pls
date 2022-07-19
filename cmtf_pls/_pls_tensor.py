@@ -5,7 +5,6 @@ from copy import copy
 
 import numpy as np
 from numpy.linalg import pinv, norm, lstsq
-from sklearn.model_selection import LeaveOneOut
 import tensorly as tl
 from tensorly.cp_tensor import CPTensor
 from tensorly.tenalg import khatri_rao, mode_dot, multi_mode_dot
@@ -24,35 +23,22 @@ def calcR2X(X, Xhat):
 
 class PLSTensor(Mapping, metaclass=ABCMeta):
     """ Base class for all variants of tensor PLS """
-    def __init__(self, num_comp:int, *args, **kwargs):
-        super().__init__()
+    def __init__(self, n_components:int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Parameters
-        self.num_comp = num_comp
-
-        # Variables
-        self.original_X = None
-        self.original_Y = None
-        self.X = None
-        self.Y = None
-        self.Xdim = 0
-        self.X_mean = None
-        self.Y_mean = None
-
-        # Factors
-        self.Xfacs = None
-        self.Yfacs = None
+        self.n_components = n_components
 
     def __getitem__(self, index):
         if index == 0:
-            return self.Xfacs
+            return self.X_factors
         elif index == 1:
-            return self.Yfacs
+            return self.Y_factors
         else:
             raise IndexError
 
     def __iter__(self):
-        yield self.Xfacs
-        yield self.Yfacs
+        yield self.X_factors
+        yield self.Y_factors
 
     def __len__(self):
         return 2
@@ -69,13 +55,13 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
     def _init_factors(self, X, Y):
         assert X.shape[0] == Y.shape[0]
         assert Y.ndim <= 2
-        self.Xdim = X.ndim
-        self.original_X = X
-        self.original_Y = Y
+        self.X_dim = X.ndim
+        self.original_X = X.copy()
+        self.original_Y = Y.copy()
         self.X = X
         self.Y = Y
-        self.Xfacs = [np.zeros((l, self.num_comp)) for l in X.shape]
-        self.Yfacs = [np.zeros((l, self.num_comp)) for l in Y.shape]
+        self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
+        self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
 
     def fit(self, X, Y):
         raise NotImplementedError
@@ -88,17 +74,17 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
             f"Training tensor shape is {self.X.shape}, while new tensor " \
             f"shape is {to_predict.shape}"
         to_predict = self._mean_center(to_predict)
-        factors_kr = khatri_rao(self.Xfacs, skip_matrix=0)
+        factors_kr = khatri_rao(self.X_factors, skip_matrix=0)
         unfolded = tl.unfold(to_predict, 0)
         scores, _, _, _ = lstsq(factors_kr, unfolded.T, rcond=-1)
 
-        return scores.T @ self.Yfacs[1]
+        return scores.T @ self.Y_factors[1]
 
-    def x_recover(self):
-        return CPTensor((None, self.Xfacs)).to_tensor()
+    def X_reconstructed(self):
+        return CPTensor((None, self.X_factors)).to_tensor()
 
-    def y_recover(self):
-        if len(self.Yfacs) >= 2:
-            return CPTensor((None, self.Yfacs)).to_tensor()
+    def Y_reconstructed(self):
+        if len(self.Y_factors) >= 2:
+            return CPTensor((None, self.Y_factors)).to_tensor()
         else:
-            return self.Yfacs[0]
+            return self.Y_factors[0]

@@ -14,13 +14,13 @@ class TwoModePLS(PLSTensor):
         X, Y = self.X.copy(), self.Y.copy()
         n, k, m = X.shape[0], X.shape[1], Y.shape[1]
         assert n == Y.shape[0]
-        T = np.zeros((n, self.num_comp))
-        U = np.zeros((n, self.num_comp))
-        W = np.zeros((k, self.num_comp))
-        P = np.zeros((k, self.num_comp))
-        C = np.zeros((m, self.num_comp))
-        Q = np.zeros((m, self.num_comp))
-        for a in range(self.num_comp):
+        T = np.zeros((n, self.n_components))
+        U = np.zeros((n, self.n_components))
+        W = np.zeros((k, self.n_components))
+        P = np.zeros((k, self.n_components))
+        C = np.zeros((m, self.n_components))
+        Q = np.zeros((m, self.n_components))
+        for a in range(self.n_components):
             W[:, a] = np.linalg.svd(X.T @ Y)[0][:, 0]
             T[:, a] = X @ W[:, a]
             P[:, a] = X.T @ T[:, a] / norm(T[:, a]) ** 2
@@ -41,13 +41,13 @@ class TwoModePLS(PLSTensor):
         X, Y = self.X.copy(), self.Y.copy()
         n, k, m = X.shape[0], X.shape[1], Y.shape[1]
         assert n == Y.shape[0]
-        T = np.zeros((n, self.num_comp))
-        U = np.zeros((n, self.num_comp))
-        W = np.zeros((k, self.num_comp))
-        P = np.zeros((k, self.num_comp))
-        C = np.zeros((m, self.num_comp))
-        Q = np.zeros((m, self.num_comp))
-        for a in range(self.num_comp):
+        T = np.zeros((n, self.n_components))
+        U = np.zeros((n, self.n_components))
+        W = np.zeros((k, self.n_components))
+        P = np.zeros((k, self.n_components))
+        C = np.zeros((m, self.n_components))
+        Q = np.zeros((m, self.n_components))
+        for a in range(self.n_components):
             t_old = np.zeros(n)
             U[:, a] = Y[:, 0]
             for _ in range(max_iter):
