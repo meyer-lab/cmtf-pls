@@ -67,4 +67,7 @@ def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
     y = tl.dot(cp_tensor.factors[0], cp_tensor.y_factor.T)
     y += rng.normal(0, error, size=(train_dimensions[0], n_response))
 
+    if y.shape[1] == 1:
+        y = y.flatten()
+
     return x, y, cp_tensor

@@ -1,10 +1,15 @@
+import numpy as np
+import tensorly as tl
+from tensorly.tenalg import khatri_rao
+
 from ._pls_tensor import *
+
 
 class ThreeModePLS(PLSTensor):
     def __init__(self, *args):
         super().__init__(*args)
 
-    def fit(self, tol = 1e-10, max_iter = 100):
+    def fit(self, X, Y, tol=1e-10, max_iter=100):
         self.preprocess()
         X, Y = self.X.copy(), self.Y.copy()
         assert X.ndim == 3
