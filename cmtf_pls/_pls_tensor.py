@@ -8,7 +8,7 @@ from tensorly.tenalg import mode_dot, multi_mode_dot
 
 
 def calcR2X(X, Xhat):
-    if (Xhat.ndim == 2) and (X.dim == 1):
+    if (Xhat.ndim == 2) and (X.ndim == 1):
         X = X.reshape(-1, 1)
     assert X.shape == Xhat.shape
     mask = np.isfinite(X)
