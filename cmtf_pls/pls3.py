@@ -1,10 +1,16 @@
+import numpy as np
+import tensorly as tl
+from tensorly.tenalg import khatri_rao
+
 from ._pls_tensor import *
+
 
 class ThreeModePLS(PLSTensor):
     def __init__(self, *args):
         super().__init__(*args)
 
-    def fit(self):
+    def fit(self, X, Y):
+        self._init_factors(X, Y)
         self.preprocess()
         X, Y = self.X.copy(), self.Y.copy()
         assert X.ndim == 3
@@ -22,4 +28,8 @@ class ThreeModePLS(PLSTensor):
             X = X - CPTensor((None, self.Xfacs)).to_tensor()
             Y = Y - self.Xfacs[0] @ pinv(self.Xfacs[0]) @ Y
 
-        self.Yfacs = [self.Xfacs[0] @ pinv(self.Xfacs[0]) @ Y]
+        Y_loading, _, _, _ = np.linalg.lstsq(self.Xfacs[0], self.Y, rcond=-1)
+        self.Yfacs = [
+            self.Xfacs[0] @ pinv(self.Xfacs[0]) @ self.Y,
+            Y_loading
+        ]
