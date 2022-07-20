@@ -84,8 +84,11 @@ def genFigure():
     start = time.time()
     nameOut = 'figure' + sys.argv[1]
 
-    exec('from maserol.figures.' + nameOut + ' import makeFigure', globals())
+    exec('from cmtf_pls.figures.' + nameOut + ' import makeFigure', globals())
     ff = makeFigure()
     ff.savefig(fdir + nameOut + '.svg', dpi=300, bbox_inches='tight', pad_inches=0)
 
     logging.info(f'Figure {sys.argv[1]} is done after {time.time() - start} seconds.')
+
+if __name__ == "__main__":
+    genFigure()

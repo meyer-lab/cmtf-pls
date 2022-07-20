@@ -13,8 +13,8 @@ def plotTensorPLS(pls, X, Y, n = 6):
     for rr in range(1, n + 1):
         plso = pls(X, Y, rr)
         plso.fit()
-        R2Xs.append(calcR2X(X, plso.x_recover()))
-        R2Ys.append(calcR2X(Y, plso.y_recover()))
+        R2Xs.append(calcR2X(X, plso.X_reconstructed()))
+        R2Ys.append(calcR2X(Y, plso.Y_reconstructed()))
         predY = np.zeros_like(Y)
         try:
             for j in range(X.shape[0]):
@@ -51,7 +51,7 @@ def get_q2y(pls_tensor):
         'PLS Tensor must be fit prior to calculating Q2Y'
     X = pls_tensor.original_X
     Y = pls_tensor.original_Y
-    q2y_plsr = ThreeModePLS(pls_tensor.num_comp)
+    q2y_plsr = ThreeModePLS(pls_tensor.n_components)
 
     loo = LeaveOneOut()
     Y_pred = np.zeros(Y.shape)

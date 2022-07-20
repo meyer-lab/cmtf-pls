@@ -5,7 +5,7 @@ all: $(patsubst cmtf_pls/figures/figure%.py, output/figure%.svg, $(flist))
 
 output/figure%.svg: cmtf_pls/figures/figure%.py
 	mkdir -p output
-	XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 poetry run fbuild $*
+	XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 poetry run python ./cmtf_pls/figures/common.py $*
 
 test:
 	XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 poetry run pytest -s -v -x
