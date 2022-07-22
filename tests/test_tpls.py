@@ -1,5 +1,7 @@
+import numpy as np
 from numpy.testing import assert_allclose
 import tensorly as tl
+from tensorly.cp_tensor import CPTensor, cp_normalize
 from tensorly.metrics.factors import congruence_coefficient
 
 from cmtf_pls.synthetic import import_synthetic
@@ -41,6 +43,24 @@ def test_factor_normality():
             tl.norm(y_factor, axis=0),
             1
         )
+
+
+# This method should test for factor hyper-orthogonality; components seem
+# very loosely hyper-orthogonal (cut-off of 1E-2 is generous).
+def test_factor_orthogonality():
+    x, y, _, pls = _get_standard_synthetic()
+    x_cp = CPTensor((None, pls.X_factors))
+    x_cp = cp_normalize(x_cp)
+
+    for component_1 in range(x_cp.rank):
+        for component_2 in range(component_1 + 1, x_cp.rank):
+            factor_product = 1
+            for factor in x_cp.factors:
+                factor_product *= np.dot(
+                    factor[:, component_1],
+                    factor[:, component_2]
+                )
+            assert abs(factor_product) < 1E-2
 
 
 def test_consistent_components():
