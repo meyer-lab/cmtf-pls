@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_array_almost_equal
 from tensorly.metrics.factors import congruence_coefficient
 
 from cmtf_pls.synthetic import import_synthetic
@@ -9,6 +9,22 @@ from cmtf_pls.tpls import NModePLS
 TENSOR_DIMENSIONS = (100, 38, 65)
 N_RESPONSE = 4
 N_LATENT = 8
+
+
+def test_consistent_components():
+    x, y, _ = import_synthetic(
+        TENSOR_DIMENSIONS,
+        N_RESPONSE,
+        N_LATENT
+    )
+    pls = NModePLS(N_LATENT)
+    pls.fit(x, y)
+
+    for x_factor in pls.X_factors:
+        assert x_factor.shape[1] == N_LATENT
+
+    for y_factor in pls.Y_factors:
+        assert y_factor.shape[1] == N_LATENT
 
 
 def _test_dimension_compatibility(x_rank, n_response):
