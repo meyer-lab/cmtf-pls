@@ -1,5 +1,5 @@
-import numpy as np
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_allclose
+import tensorly as tl
 from tensorly.metrics.factors import congruence_coefficient
 
 from cmtf_pls.synthetic import import_synthetic
@@ -11,8 +11,10 @@ N_RESPONSE = 4
 N_LATENT = 8
 
 
-def test_consistent_components():
-    x, y, _ = import_synthetic(
+# Supporting Functions
+
+def _get_standard_synthetic():
+    x, y, cp_tensor = import_synthetic(
         TENSOR_DIMENSIONS,
         N_RESPONSE,
         N_LATENT
@@ -20,12 +22,38 @@ def test_consistent_components():
     pls = NModePLS(N_LATENT)
     pls.fit(x, y)
 
+    return x, y, cp_tensor, pls
+
+
+# Class Structure Tests
+
+def test_factor_normality():
+    x, y, _, pls = _get_standard_synthetic()
+
+    for x_factor in pls.X_factors[1:]:
+        assert_allclose(
+            tl.norm(x_factor, axis=0),
+            1
+        )
+
+    for y_factor in pls.Y_factors[1:]:
+        assert_allclose(
+            tl.norm(y_factor, axis=0),
+            1
+        )
+
+
+def test_consistent_components():
+    x, y, _, pls = _get_standard_synthetic()
+
     for x_factor in pls.X_factors:
         assert x_factor.shape[1] == N_LATENT
 
     for y_factor in pls.Y_factors:
         assert y_factor.shape[1] == N_LATENT
 
+
+# Dimension Compatibility Tests
 
 def _test_dimension_compatibility(x_rank, n_response):
     x, y, _ = import_synthetic(
@@ -65,6 +93,24 @@ def test_compatibility_3d_x_2d_y():
 
 def test_compatibility_4d_x_2d_y():
     _test_dimension_compatibility(4, 4)
+
+
+# Decomposition Accuracy Tests
+
+def test_constant_y():
+    x, y, _ = import_synthetic(
+        TENSOR_DIMENSIONS,
+        N_RESPONSE,
+        N_LATENT
+    )
+    y[:, 0] = 1
+    pls = NModePLS(N_LATENT)
+    pls.fit(x, y)
+
+    assert_allclose(
+        pls.Y_factors[1][0, :],
+        0
+    )
 
 
 def _test_decomposition_accuracy(x_rank, n_response):
