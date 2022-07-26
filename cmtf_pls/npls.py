@@ -59,6 +59,7 @@ class NPLS(Mapping, metaclass=ABCMeta):
 
         # mean center the data; set up factors
         self.X_dim = X.ndim
+        self.X_shape = X.shape
         self.original_X = X.copy()
         self.original_Y = Y.copy()
         self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
@@ -70,7 +71,7 @@ class NPLS(Mapping, metaclass=ABCMeta):
         return X - self.X_mean, Y - self.Y_mean
 
 
-    def fit(self, X, Y, tol=1e-10, max_iter=100):
+    def fit(self, X, Y, tol=1e-10, max_iter=100, verbose=0):
         X, Y = self.preprocess(X, Y)
 
         for a in range(self.n_components):
@@ -86,7 +87,8 @@ class NPLS(Mapping, metaclass=ABCMeta):
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
                 self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
                 if norm(oldU - self.Y_factors[0][:, a]) < tol:
-                    print("Comp {}: converged after {} iterations".format(a, iter))
+                    if verbose:
+                        print("Comp {}: converged after {} iterations".format(a, iter))
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
@@ -94,16 +96,49 @@ class NPLS(Mapping, metaclass=ABCMeta):
             Y -= self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
                  self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q'
 
-    def predict(self, to_predict):
-        assert self.original_X.shape[1:] == to_predict.shape[1:], \
-            f"Training tensor shape is {self.original_X.shape}, while new tensor " \
-            f"shape is {to_predict.shape}"
-        to_predict -= self.X_mean
-        factors_kr = khatri_rao(self.X_factors, skip_matrix=0)
-        unfolded = tl.unfold(to_predict, 0)
-        scores, _, _, _ = lstsq(factors_kr, unfolded.T, rcond=-1)
 
-        return scores.T @ self.Y_factors[1].T
+    def predict(self, X):
+        if self.X_shape[1:] != X.shape[1:]:
+            raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
+        X -= self.X_mean
+        factors_kr = khatri_rao(self.X_factors, skip_matrix=0)
+        unfolded = tl.unfold(X, 0)
+        scores = lstsq(factors_kr, unfolded.T, rcond=-1)[0]
+        estimators = lstsq(self.X_factors[0], self.Y_factors[0])[0]
+
+        return scores.T @ estimators @ self.Y_factors[1].T
+
+
+    def transform(self, X, Y=None):
+        if self.X_shape[1:] != X.shape[1:]:
+            raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
+        X = X.copy()
+        X -= self.X_mean
+        X_scores = np.zeros((X.shape[0], self.n_components))
+
+        for a in range(self.n_components):
+            X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, X.ndim))
+            X -= CPTensor((None, [X_scores[:, a].reshape((-1, 1))] + [ff[:, a].reshape((-1, 1)) for ff in self.X_factors[1:]])).to_tensor()
+
+        if Y is not None:
+            Y = Y.copy()
+            # Check on the shape of Y
+            if (Y.ndim != 1) and (Y.ndim != 2):
+                raise ValueError("Only a matrix (2-mode tensor) Y is allowed.")
+            if Y.ndim == 1:
+                Y = Y.reshape((-1, 1))
+            if self.Y_shape[1:] != Y.shape[1:]:
+                raise ValueError(f"Training Y has shape {self.Y_shape}, while the new Y has shape {Y.shape}")
+
+            Y -= self.Y_mean
+            Y_scores = np.zeros((Y.shape[0], self.n_components))
+            for a in range(self.n_components):
+                Y_scores[:, a] = Y @ self.Y_factors[1][:, a]
+                Y -= X_scores @ pinv(X_scores) @ Y_scores[:, [a]] @ self.Y_factors[1][:, [a]].T
+                    # Y -= T pinv(T) u q' = T lstsq(T, u) q'
+            return X_scores, Y_scores
+
+        return X_scores
 
     def X_reconstructed(self):
         return factors_to_tensor(self.X_factors) + self.X_mean
