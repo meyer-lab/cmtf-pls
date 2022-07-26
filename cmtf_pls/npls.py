@@ -8,6 +8,7 @@ from numpy.linalg import pinv, norm, lstsq
 import tensorly as tl
 from tensorly.cp_tensor import CPTensor
 from tensorly.tenalg import khatri_rao, mode_dot, multi_mode_dot
+from tensorly.decomposition import tucker
 
 
 def calcR2X(X, Xhat):
@@ -24,10 +25,10 @@ def factors_to_tensor(factors):
     return CPTensor((None, factors)).to_tensor()
 
 
-class PLSTensor(Mapping, metaclass=ABCMeta):
+class NPLS(Mapping, metaclass=ABCMeta):
     """ Base class for all variants of tensor PLS """
-    def __init__(self, n_components:int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, n_components:int):
+        super().__init__()
         # Parameters
         self.n_components = n_components
 
@@ -69,10 +70,29 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
         return X - self.X_mean, Y - self.Y_mean
 
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, tol=1e-10, max_iter=100):
         X, Y = self.preprocess(X, Y)
-        raise NotImplementedError
 
+        for a in range(self.n_components):
+            oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
+            for iter in range(max_iter):
+                Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
+                Z_comp = tucker(Z, [1] * Z.ndim)[1] if Z.ndim >= 2 else [Z / norm(Z)]
+                for ii in range(Z.ndim):
+                    self.X_factors[ii + 1][:, a] = Z_comp[ii].flatten()
+
+                self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, X.ndim))
+                self.Y_factors[1][:, a] = Y.T @ self.X_factors[0][:, a]
+                self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
+                self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
+                if norm(oldU - self.Y_factors[0][:, a]) < tol:
+                    print("Comp {}: converged after {} iterations".format(a, iter))
+                    break
+                oldU = self.Y_factors[0][:, a].copy()
+
+            X -= factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
+            Y -= self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
+                 self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q'
 
     def predict(self, to_predict):
         assert self.original_X.shape[1:] == to_predict.shape[1:], \
@@ -83,7 +103,7 @@ class PLSTensor(Mapping, metaclass=ABCMeta):
         unfolded = tl.unfold(to_predict, 0)
         scores, _, _, _ = lstsq(factors_kr, unfolded.T, rcond=-1)
 
-        return scores.T @ self.Y_factors[1]
+        return scores.T @ self.Y_factors[1].T
 
     def X_reconstructed(self):
         return factors_to_tensor(self.X_factors) + self.X_mean
