@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.testing import assert_allclose
+from sklearn.decomposition import PCA
 import tensorly as tl
 from tensorly.cp_tensor import CPTensor, cp_normalize
 from tensorly.metrics.factors import congruence_coefficient
@@ -117,7 +118,24 @@ def test_compatibility_4d_x_2d_y():
 
 # Decomposition Accuracy Tests
 
-def test_constant_y():
+
+def test_zero_covariance_x():
+    x, y, _ = import_synthetic(
+        TENSOR_DIMENSIONS,
+        N_RESPONSE,
+        N_LATENT
+    )
+    x[:, 0, :] = 1
+    pls = NModePLS(N_LATENT)
+    pls.fit(x, y)
+
+    assert_allclose(
+        pls.X_factors[1][0, :],
+        0
+    )
+
+
+def test_zero_covariance_y():
     x, y, _ = import_synthetic(
         TENSOR_DIMENSIONS,
         N_RESPONSE,
