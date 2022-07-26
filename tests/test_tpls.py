@@ -118,6 +118,23 @@ def test_compatibility_4d_x_2d_y():
 
 # Decomposition Accuracy Tests
 
+def test_same_x_y():
+    x, _, _ = import_synthetic(
+        (100, 100),
+        N_RESPONSE,
+        N_LATENT
+    )
+    pls = NModePLS(N_LATENT)
+    pca = PCA(N_LATENT)
+
+    pls.fit(x, x)
+    scores = pca.fit_transform(x)
+
+    assert_allclose(pls.X_factors[0], pls.Y_factors[0], rtol=0, atol=1E-4)
+    assert_allclose(pls.X_factors[1], pls.Y_factors[1], rtol=0, atol=1E-4)
+    assert congruence_coefficient(pls.X_factors[0], scores)[0] > 0.95
+    assert congruence_coefficient(pls.X_factors[1], pca.components_.T)[0] > 0.95
+
 
 def test_zero_covariance_x():
     x, y, _ = import_synthetic(
