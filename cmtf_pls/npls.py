@@ -104,7 +104,7 @@ class NPLS(Mapping, metaclass=ABCMeta):
         factors_kr = khatri_rao(self.X_factors, skip_matrix=0)
         unfolded = tl.unfold(X, 0)
         scores = lstsq(factors_kr, unfolded.T, rcond=-1)[0]
-        estimators = lstsq(self.X_factors[0], self.Y_factors[0])[0]
+        estimators = lstsq(self.X_factors[0], self.Y_factors[0], rcond=-1)[0]
 
         return scores.T @ estimators @ self.Y_factors[1].T
 
