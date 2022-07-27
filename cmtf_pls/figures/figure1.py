@@ -1,13 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
-from cmtf_pls.figures.common import getSetup
-from cmtf_pls.pls3 import ThreeModePLS
-from cmtf_pls.synthetic import import_synthetic
-from cmtf_pls.validate import get_q2y
+from ..npls import NPLS
+from .common import getSetup
+from ..synthetic import import_synthetic
+from ..validate import get_q2y
 
 TENSOR_DIMENSIONS = (100, 38, 65)
-N_RESPONSE = 1
+N_RESPONSE = 4
 N_LATENT = 8
 
 
@@ -21,7 +20,7 @@ def makeFigure():
     q2ys = np.zeros(components.shape)
 
     for index, n_components in enumerate(components):
-        pls_tensor = ThreeModePLS(n_components)
+        pls_tensor = NPLS(n_components)
         pls_tensor.fit(x, y)
         q2ys[index] = get_q2y(pls_tensor)
 
