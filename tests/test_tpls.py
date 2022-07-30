@@ -2,36 +2,56 @@ import numpy as np
 from numpy.testing import assert_allclose
 from sklearn.decomposition import PCA
 import tensorly as tl
-from tensorly.cp_tensor import CPTensor, cp_normalize
+from tensorly.cp_tensor import CPTensor, cp_normalize, cp_to_tensor
 from tensorly.metrics.factors import congruence_coefficient
+from tensorly.random import random_cp
 
-from cmtf_pls.synthetic import import_synthetic
-from cmtf_pls.tpls import NModePLS
+from cmtf_pls.npls import NPLS
 
 
 TENSOR_DIMENSIONS = (100, 38, 65)
-N_RESPONSE = 4
-N_LATENT = 8
+N_RESPONSE = 8
+N_LATENT = 4
 
 
 # Supporting Functions
 
-def _get_standard_synthetic():
-    x, y, cp_tensor = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT
-    )
-    pls = NModePLS(N_LATENT)
-    pls.fit(x, y)
 
-    return x, y, cp_tensor, pls
+def _get_pls_dataset(tensor_dimensions, n_latent, n_response):
+    x_tensor = random_cp(
+        tensor_dimensions,
+        n_latent,
+        orthogonal=True,
+        normalise_factors=True,
+        random_state=42
+    )
+    y_tensor = random_cp(
+        (tensor_dimensions[0], n_response),
+        n_latent,
+        random_state=42
+    )
+
+    y_tensor.factors[0] = x_tensor.factors[0]
+    x = cp_to_tensor(x_tensor)
+    y = cp_to_tensor(y_tensor)
+
+    return x, y, x_tensor, y_tensor
+
+
+def _get_standard_synthetic():
+    return _get_pls_dataset(
+        TENSOR_DIMENSIONS,
+        N_LATENT,
+        N_RESPONSE
+    )
 
 
 # Class Structure Tests
 
 def test_factor_normality():
-    x, y, _, pls = _get_standard_synthetic()
+    x, y, _, _ = _get_standard_synthetic()
+    pls = NPLS(n_components=N_LATENT)
+    pls.fit(x, y)
 
     for x_factor in pls.X_factors[1:]:
         assert_allclose(
@@ -49,7 +69,9 @@ def test_factor_normality():
 # This method should test for factor hyper-orthogonality; components seem
 # very loosely hyper-orthogonal (cut-off of 1E-2 is generous).
 def test_factor_orthogonality():
-    x, y, _, pls = _get_standard_synthetic()
+    x, y, _, _ = _get_standard_synthetic()
+    pls = NPLS(n_components=N_LATENT)
+    pls.fit(x, y)
     x_cp = CPTensor((None, pls.X_factors))
     x_cp = cp_normalize(x_cp)
 
@@ -61,11 +83,13 @@ def test_factor_orthogonality():
                     factor[:, component_1],
                     factor[:, component_2]
                 )
-            assert abs(factor_product) < 1E-2
+            assert abs(factor_product) < 1E-8
 
 
 def test_consistent_components():
-    x, y, _, pls = _get_standard_synthetic()
+    x, y, _, _ = _get_standard_synthetic()
+    pls = NPLS(n_components=N_LATENT)
+    pls.fit(x, y)
 
     for x_factor in pls.X_factors:
         assert x_factor.shape[1] == N_LATENT
@@ -77,13 +101,9 @@ def test_consistent_components():
 # Dimension Compatibility Tests
 
 def _test_dimension_compatibility(x_rank, n_response):
-    x, y, _ = import_synthetic(
-        tuple([100] * x_rank),
-        n_response,
-        N_LATENT
-    )
+    x, y, _, _= _get_standard_synthetic()
     try:
-        pls = NModePLS(N_LATENT)
+        pls = NPLS(N_LATENT)
         pls.fit(x, y)
     except ValueError:
         raise AssertionError(
@@ -118,13 +138,15 @@ def test_compatibility_4d_x_2d_y():
 
 # Decomposition Accuracy Tests
 
-def test_same_x_y():
-    x, _, _ = import_synthetic(
-        (100, 100),
-        N_RESPONSE,
-        N_LATENT
+def test_same_x_y_2d():
+    x = random_cp(
+        (100, 38),
+        N_LATENT,
+        orthogonal=True,
+        full=True,
+        random_state=42
     )
-    pls = NModePLS(N_LATENT)
+    pls = NPLS(N_LATENT)
     pca = PCA(N_LATENT)
 
     pls.fit(x, x)
@@ -137,13 +159,9 @@ def test_same_x_y():
 
 
 def test_zero_covariance_x():
-    x, y, _ = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT
-    )
+    x, y, _, _ = _get_standard_synthetic()
     x[:, 0, :] = 1
-    pls = NModePLS(N_LATENT)
+    pls = NPLS(N_LATENT)
     pls.fit(x, y)
 
     assert_allclose(
@@ -153,13 +171,9 @@ def test_zero_covariance_x():
 
 
 def test_zero_covariance_y():
-    x, y, _ = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT
-    )
+    x, y, _, _ = _get_standard_synthetic()
     y[:, 0] = 1
-    pls = NModePLS(N_LATENT)
+    pls = NPLS(N_LATENT)
     pls.fit(x, y)
 
     assert_allclose(
@@ -169,18 +183,20 @@ def test_zero_covariance_y():
 
 
 def _test_decomposition_accuracy(x_rank, n_response):
-    x, y, true_cp = import_synthetic(
+    x, y, x_cp, y_cp = _get_pls_dataset(
         tuple([100] * x_rank),
-        n_response,
-        N_LATENT
+        N_LATENT,
+        n_response
     )
-    pls = NModePLS(N_LATENT)
+    pls = NPLS(N_LATENT)
     pls.fit(x, y)
 
-    for pls_factor, true_factor in zip(pls.X_factors, true_cp.factors):
+    cp_normalize(x_cp)
+
+    for pls_factor, true_factor in zip(pls.X_factors, x_cp.factors):
         assert congruence_coefficient(pls_factor, true_factor)[0] > 0.95
 
-    assert congruence_coefficient(pls.Y_factors[1], true_cp.y_factor)[0] > 0.95
+    assert congruence_coefficient(pls.Y_factors[1], y_cp.factors[1])[0] > 0.95
 
 
 def test_decomposition_accuracy_3d_x_1d_y():
@@ -192,7 +208,7 @@ def test_decomposition_accuracy_4d_x_1d_y():
 
 
 def test_decomposition_accuracy_3d_x_2d_y():
-    _test_decomposition_accuracy(3, 4)
+    _test_decomposition_accuracy(3, 8)
 
 
 def test_decomposition_accuracy_4d_x_2d_y():
@@ -201,11 +217,17 @@ def test_decomposition_accuracy_4d_x_2d_y():
 
 # Reconstruction tests -- these will likely fail!
 
-# def test_reconstruction_x():
-#     x, y, _, pls = _get_standard_synthetic()
-#     assert_allclose(pls.X_reconstructed(), x)
-#
-#
+def test_reconstruction_x():
+    x, y, _, _ = _get_standard_synthetic()
+    pls = NPLS(N_LATENT)
+    pls.fit(x, y)
+
+    assert_allclose(pls.X_reconstructed(), x)
+
+
 # def test_reconstruction_y():
-#     x, y, _, pls = _get_standard_synthetic()
+#     x, y, _, _ = _get_standard_synthetic()
+#     pls = NPLS(N_LATENT)
+#     pls.fit(x, y)
+#
 #     assert_allclose(pls.Y_reconstructed(), y)
