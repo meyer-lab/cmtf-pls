@@ -1,3 +1,5 @@
+import pytest
+
 import numpy as np
 from numpy.testing import assert_allclose
 from sklearn.decomposition import PCA
@@ -11,8 +13,10 @@ from cmtf_pls.npls import NPLS
 
 TENSOR_DIMENSIONS = (100, 38, 65)
 N_RESPONSE = 8
-N_LATENT = 4
+N_LATENT = 8
 
+TEST_RANKS = [3, 4, 5, 6]
+TEST_RESPONSE = [1, 4, 8, 16, 32]
 
 # Supporting Functions
 
@@ -47,6 +51,21 @@ def _get_standard_synthetic():
 
 
 # Class Structure Tests
+
+@pytest.mark.parametrize('x_rank', TEST_RANKS)
+@pytest.mark.parametrize('n_response', TEST_RESPONSE)
+def test_transform(x_rank, n_response):
+    x, y, _, _ = _get_pls_dataset(
+        tuple([10] * x_rank),
+        N_LATENT,
+        n_response
+    )
+    pls = NPLS(N_LATENT)
+    pls.fit(x, y)
+
+    transformed = pls.transform(x)
+    assert_allclose(transformed, pls.X_factors[0])
+
 
 def test_factor_normality():
     x, y, _, _ = _get_standard_synthetic()
@@ -100,8 +119,14 @@ def test_consistent_components():
 
 # Dimension Compatibility Tests
 
-def _test_dimension_compatibility(x_rank, n_response):
-    x, y, _, _= _get_standard_synthetic()
+@pytest.mark.parametrize('x_rank', TEST_RANKS)
+@pytest.mark.parametrize('n_response', TEST_RESPONSE)
+def test_dimension_compatibility(x_rank, n_response):
+    x, y, _, _ = _get_pls_dataset(
+        tuple([10] * x_rank),
+        N_LATENT,
+        n_response
+    )
     try:
         pls = NPLS(N_LATENT)
         pls.fit(x, y)
@@ -110,30 +135,6 @@ def _test_dimension_compatibility(x_rank, n_response):
             f'Fit failed for {len(x.shape)}-dimensional tensor with '
             f'{n_response} response variables in y'
         )
-
-
-def test_compatibility_2d_x_1d_y():
-    _test_dimension_compatibility(2, 1)
-
-
-def test_compatibility_3d_x_1d_y():
-    _test_dimension_compatibility(3, 1)
-
-
-def test_compatibility_4d_x_1d_y():
-    _test_dimension_compatibility(4, 1)
-
-
-def test_compatibility_2d_x_2d_y():
-    _test_dimension_compatibility(2, 4)
-
-
-def test_compatibility_3d_x_2d_y():
-    _test_dimension_compatibility(3, 4)
-
-
-def test_compatibility_4d_x_2d_y():
-    _test_dimension_compatibility(4, 4)
 
 
 # Decomposition Accuracy Tests
@@ -182,9 +183,11 @@ def test_zero_covariance_y():
     )
 
 
-def _test_decomposition_accuracy(x_rank, n_response):
+@pytest.mark.parametrize('x_rank', TEST_RANKS)
+@pytest.mark.parametrize('n_response', TEST_RESPONSE)
+def test_decomposition_accuracy(x_rank, n_response):
     x, y, x_cp, y_cp = _get_pls_dataset(
-        tuple([100] * x_rank),
+        tuple([10] * x_rank),
         N_LATENT,
         n_response
     )
@@ -194,28 +197,10 @@ def _test_decomposition_accuracy(x_rank, n_response):
     cp_normalize(x_cp)
 
     for pls_factor, true_factor in zip(pls.X_factors, x_cp.factors):
-        assert congruence_coefficient(pls_factor, true_factor)[0] > 0.95
+        assert congruence_coefficient(pls_factor, true_factor)[0] > 0.85
 
-    assert congruence_coefficient(pls.Y_factors[1], y_cp.factors[1])[0] > 0.95
+    assert congruence_coefficient(pls.Y_factors[1], y_cp.factors[1])[0] > 0.85
 
-
-def test_decomposition_accuracy_3d_x_1d_y():
-    _test_decomposition_accuracy(3, 1)
-
-
-def test_decomposition_accuracy_4d_x_1d_y():
-    _test_decomposition_accuracy(4, 1)
-
-
-def test_decomposition_accuracy_3d_x_2d_y():
-    _test_decomposition_accuracy(3, 8)
-
-
-def test_decomposition_accuracy_4d_x_2d_y():
-    _test_decomposition_accuracy(4, 2)
-
-
-# Reconstruction tests -- these will likely fail!
 
 def test_reconstruction_x():
     x, y, _, _ = _get_standard_synthetic()

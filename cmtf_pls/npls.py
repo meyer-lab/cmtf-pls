@@ -54,6 +54,8 @@ class NPLS(Mapping, metaclass=ABCMeta):
         # check input integrity
         assert X.shape[0] == Y.shape[0]
         assert Y.ndim <= 2, "Only a matrix (2-mode tensor) Y is acceptable."
+        assert any(Y.var(axis=0) > 0), "No variance in any response variable " \
+                                       "detected"
         if Y.ndim == 1:
             Y = Y.reshape(-1, 1)
 
