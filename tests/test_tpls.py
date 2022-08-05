@@ -18,6 +18,8 @@ N_LATENT = 8
 TEST_RANKS = [3, 4, 5, 6]
 TEST_RESPONSE = [1, 4, 8, 16, 32]
 
+RANDOM_STATE = np.random.RandomState(215)
+
 # Supporting Functions
 
 
@@ -27,12 +29,12 @@ def _get_pls_dataset(tensor_dimensions, n_latent, n_response):
         n_latent,
         orthogonal=True,
         normalise_factors=True,
-        random_state=42
+        random_state=RANDOM_STATE
     )
     y_tensor = random_cp(
         (tensor_dimensions[0], n_response),
         n_latent,
-        random_state=42
+        random_state=RANDOM_STATE
     )
 
     y_tensor.factors[0] = x_tensor.factors[0]
@@ -141,11 +143,10 @@ def test_dimension_compatibility(x_rank, n_response):
 
 def test_same_x_y_2d():
     x = random_cp(
-        (100, 38),
+        (100, 100),
         N_LATENT,
-        orthogonal=True,
         full=True,
-        random_state=42
+        random_state=RANDOM_STATE
     )
     pls = NPLS(N_LATENT)
     pca = PCA(N_LATENT)
