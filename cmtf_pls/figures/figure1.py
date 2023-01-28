@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from ..npls import NPLS
+from ..tpls import tPLS
 from .common import getSetup
 from ..synthetic import import_synthetic
 from ..validate import get_q2y
@@ -20,7 +20,7 @@ def makeFigure():
     q2ys = np.zeros(components.shape)
 
     for index, n_components in enumerate(components):
-        pls_tensor = NPLS(n_components)
+        pls_tensor = tPLS(n_components)
         pls_tensor.fit(x, y)
         q2ys[index] = get_q2y(pls_tensor)
 

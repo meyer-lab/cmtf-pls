@@ -25,7 +25,7 @@ def factors_to_tensor(factors):
     return CPTensor((None, factors)).to_tensor()
 
 
-class NPLS(Mapping, metaclass=ABCMeta):
+class tPLS(Mapping, metaclass=ABCMeta):
     """ Base class for all variants of tensor PLS """
     def __init__(self, n_components:int):
         super().__init__()
