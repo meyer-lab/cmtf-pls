@@ -9,6 +9,7 @@ import tensorly as tl
 from tensorly.cp_tensor import CPTensor
 from tensorly.tenalg import khatri_rao, mode_dot, multi_mode_dot
 from tensorly.decomposition import tucker
+from tensorly.decomposition._cp import parafac
 
 
 def calcR2X(X, Xhat):
@@ -71,14 +72,21 @@ class tPLS(Mapping, metaclass=ABCMeta):
         return X - self.X_mean, Y - self.Y_mean
 
 
-    def fit(self, X, Y, tol=1e-10, max_iter=100, verbose=0):
+    def fit(self, X, Y, tol=1e-9, max_iter=100, verbose=0, method="cp"):
         X, Y = self.preprocess(X, Y)
 
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             for iter in range(max_iter):
                 Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
-                Z_comp = tucker(Z, [1] * Z.ndim)[1] if Z.ndim >= 2 else [Z / norm(Z)]
+                Z_comp = [Z / norm(Z)]
+                if Z.ndim >= 2:
+                    if method == "cp":
+                        Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]
+                    elif method == "tucker":
+                        Z_comp = tucker(Z, [1] * Z.ndim)[1]
+                    else:
+                        raise NotImplementedError
                 for ii in range(Z.ndim):
                     self.X_factors[ii + 1][:, a] = Z_comp[ii].flatten()
 
