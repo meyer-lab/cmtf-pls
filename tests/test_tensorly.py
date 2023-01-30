@@ -16,3 +16,9 @@ def test_tensorly_same_results():
             np.all(np.isclose(tly.X_factors[ii], tpack.X_factors[ii], rtol=1e-5), axis=0),
             np.all(np.isclose(tly.X_factors[ii], -tpack.X_factors[ii], rtol=1e-5), axis=0),
         )), f"Agreement with Tensorly CP_PLSR: X factor {ii} are not the same."
+
+    for ii in range(len(Y.shape)):
+        assert np.all(np.logical_or(
+            np.all(np.isclose(tly.Y_factors[ii], tpack.Y_factors[ii], rtol=1e-5), axis=0),
+            np.all(np.isclose(tly.Y_factors[ii], -tpack.Y_factors[ii], rtol=1e-5), axis=0),
+        )), f"Agreement with Tensorly CP_PLSR: Y factor {ii} are not the same."
