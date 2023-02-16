@@ -2,7 +2,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.model_selection import LeaveOneOut
 
-from cmtf_pls.npls import *
+from cmtf_pls.tpls import *
 
 
 def plotTensorPLS(pls, X, Y, n = 6):
@@ -41,7 +41,7 @@ def get_q2y(pls_tensor):
     Calculates Q2Y for a fitted PLS tensor.
 
     Args:
-        pls_tensor (NPLS): fitted PLS tensor.
+        pls_tensor (tPLS): fitted PLS tensor.
 
     Returns:
         Q2Y (float): Q2Y of PLS tensor applied to fitted dataset.
@@ -50,7 +50,7 @@ def get_q2y(pls_tensor):
         'PLS Tensor must be fit prior to calculating Q2Y'
     X = pls_tensor.original_X
     Y = pls_tensor.original_Y
-    q2y_plsr = NPLS(pls_tensor.n_components)
+    q2y_plsr = tPLS(pls_tensor.n_components)
 
     loo = LeaveOneOut()
     Y_pred = np.zeros(Y.shape)

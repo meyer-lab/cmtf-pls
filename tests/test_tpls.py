@@ -6,7 +6,7 @@ from tensorly.cp_tensor import CPTensor, cp_normalize
 from tensorly.metrics.factors import congruence_coefficient
 
 from cmtf_pls.synthetic import import_synthetic
-from cmtf_pls.tpls import NModePLS
+from cmtf_pls.tpls import tPLS
 
 
 TENSOR_DIMENSIONS = (100, 38, 65)
@@ -22,7 +22,7 @@ def _get_standard_synthetic():
         N_RESPONSE,
         N_LATENT
     )
-    pls = NModePLS(N_LATENT)
+    pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
     return x, y, cp_tensor, pls
@@ -83,7 +83,7 @@ def _test_dimension_compatibility(x_rank, n_response):
         N_LATENT
     )
     try:
-        pls = NModePLS(N_LATENT)
+        pls = tPLS(N_LATENT)
         pls.fit(x, y)
     except ValueError:
         raise AssertionError(
@@ -124,7 +124,7 @@ def test_same_x_y():
         N_RESPONSE,
         N_LATENT
     )
-    pls = NModePLS(N_LATENT)
+    pls = tPLS(N_LATENT)
     pca = PCA(N_LATENT)
 
     pls.fit(x, x)
@@ -143,7 +143,7 @@ def test_zero_covariance_x():
         N_LATENT
     )
     x[:, 0, :] = 1
-    pls = NModePLS(N_LATENT)
+    pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
     assert_allclose(
@@ -159,7 +159,7 @@ def test_zero_covariance_y():
         N_LATENT
     )
     y[:, 0] = 1
-    pls = NModePLS(N_LATENT)
+    pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
     assert_allclose(
@@ -174,7 +174,7 @@ def _test_decomposition_accuracy(x_rank, n_response):
         n_response,
         N_LATENT
     )
-    pls = NModePLS(N_LATENT)
+    pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
     for pls_factor, true_factor in zip(pls.X_factors, true_cp.factors):
