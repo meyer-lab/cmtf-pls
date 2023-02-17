@@ -6,23 +6,24 @@ import numpy.linalg as la
 from numpy.linalg import inv
 from scipy.linalg import sqrtm
 import scipy
+from tensorly.tucker_tensor import tucker_to_tensor
 
 def ttt(x, y, ms):
-  """
-  Calculate the matrix product of two unfolded tensors along a specific mode
+    """
+    Calculate the matrix product of two unfolded tensors along a specific mode
 
-  Inputs:
-  - x: Input tensor #1
-  - y: Input tensor #2
-  - ms: The specified mode 
+    Inputs:
+    - x: Input tensor #1
+    - y: Input tensor #2
+    - ms: The specified mode 
 
-  Return:
-  - tl.tensor(mat): The matrix product of x and y along ms.
+    Return:
+    - tl.tensor(mat): The matrix product of x and y along ms.
 
-  Reference: 
-  Zeng J, Wang W, Zhang X (2021). “TRES: An R Package for Tensor Regression and Envelope Algorithms.” 
-  Journal of Statistical Software, 99(12), 1–31. doi:10.18637/jss.v099.i12.
-  """
+    Reference: 
+    Zeng J, Wang W, Zhang X (2021). “TRES: An R Package for Tensor Regression and Envelope Algorithms.” 
+    Journal of Statistical Software, 99(12), 1–31. doi:10.18637/jss.v099.i12.
+    """
     s1 = x.shape
     s2 = y.shape
     idx_1 = [i for i in range(len(s1)) if i not in ms]
@@ -171,7 +172,9 @@ def TPR_fit(x, y, u=None, method='PLS', Gamma_init=None):
   Technometrics, 59(4), pp.426-436.
 
   """
-    '''if y is None:
+
+  '''
+    if y is None:
         tmp = x
         if isinstance(tmp, list):
             if tmp.__dict__.get('names') is not None:
@@ -195,7 +198,8 @@ def TPR_fit(x, y, u=None, method='PLS', Gamma_init=None):
         if isinstance(x, np.matrix) or isinstance(x, np.ndarray):
             x = np.asarray(x)
         else:
-            raise Exception("x should be numpy matrix, numpy array or numpy ndarray.")'''
+            raise Exception("x should be numpy matrix, numpy array or numpy ndarray.")
+  '''
     x_old = x
     y_old = y
     ss = x.shape
@@ -261,4 +265,71 @@ def TPR_fit(x, y, u=None, method='PLS', Gamma_init=None):
     output["Gamma"]=Gamma
     output["residuals"]=residuals
     output["Sigma"]=Sigx
+    output["PGamma"]=PGamma
+
     return output
+
+def TPR_reconstruct_X(output,x, y):
+    """
+      Reconstruct x based on the tucker factors from Tensor Envelope PLS.
+
+      Inputs:
+      - output: The output from TPR_fit.
+      - x: The input tensor predictors.
+      - y: The response tensor. (The size must be equal to the sample size (last) dimension of x)
+
+      IMPORTANT:
+      - The last dimension of the input tensor should be the sample size dimension.
+
+      Return:
+      - x_reconstructed: The reconstructed x with the same dimension of x by converting the Tucker tensor from TEPLS
+      (output["PGamma"]) back into the full  tensor.
+
+      Reference: 
+      1. Zeng J, Wang W, Zhang X (2021). “TRES: An R Package for Tensor Regression and Envelope Algorithms.” 
+      Journal of Statistical Software, 99(12), 1–31. doi:10.18637/jss.v099.i12.
+
+      2. Zhang, X. and Li, L., 2017. Tensor envelope partial least-squares regression. 
+      Technometrics, 59(4), pp.426-436.
+
+    """
+    factors=[]
+
+    for i in range(len(output["PGamma"])):
+        factors.append(output["PGamma"][i].T)
+
+    x_reconstructed = tucker_to_tensor((x.T.values,factors))
+
+    return x_reconstructed
+
+def TPR_transform_X(output,x, y):
+    """
+    Reduce the dimension x based on the tucker factors from Tensor Envelope PLS.
+
+    Inputs:
+    - output: The output from TPR_fit.
+    - x: The input tensor predictors.
+    - y: The response tensor. (The size must be equal to the sample size (last) dimension of x)
+
+    IMPORTANT:
+    - The last dimension of the input tensor should be the sample size dimension.
+
+    Return:
+    - x_reduced: The reduced x with the dimension specified by the envelope subspace by applying the Tucker tensor from TEPLS
+    (output["Gamma"]).
+
+    Reference: 
+    1. Zeng J, Wang W, Zhang X (2021). “TRES: An R Package for Tensor Regression and Envelope Algorithms.” 
+    Journal of Statistical Software, 99(12), 1–31. doi:10.18637/jss.v099.i12.
+
+    2. Zhang, X. and Li, L., 2017. Tensor envelope partial least-squares regression. 
+    Technometrics, 59(4), pp.426-436.
+    """
+    factors=[]
+    for i in range(len(output["Gamma"])):
+        factors.append(output["Gamma"][i].T)
+
+    x_reduced = tucker_to_tensor((x.T.values,factors))
+
+    return x_reduced
+
