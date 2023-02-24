@@ -125,5 +125,30 @@ def _test_decomposition_accuracy(idims):
     assert congruence_coefficient(pls.Y_factors[1], true_cp.y_factor)[0] > 0.95
 
 
-def test_increasing_R2X():
-    pass
+def _test_increasing_R2X(X, Y, info=""):
+    R2Xs, R2Ys = [], []
+    for r in range(1, 12):
+        tpls = tPLS(r)
+        tpls.fit(X, Y)
+        R2Xs.append(tpls.mean_centered_R2X())
+        R2Ys.append(tpls.mean_centered_R2Y())
+    R2Xds = np.array([R2Xs[i + 1] - R2Xs[i] for i in range(len(R2Xs) - 1)])
+    R2Yds = np.array([R2Ys[i + 1] - R2Ys[i] for i in range(len(R2Ys) - 1)])
+    print(R2Xs, R2Ys)
+    assert np.all(np.array(R2Xds) > 0.0), "R2X is not monotonically increasing"
+    assert np.all(np.array(R2Yds) > 0.0), \
+        f"R2Y is not monotonically increasing. " \
+        f"Streak till {np.where(R2Yds <= 0.0)[0][0] + 1}-th component, " \
+        f"R2Y = {R2Ys[np.where(R2Yds <= 0.0)[0][0]]}. " \
+        f"Y shape = {Y.shape}. {info}"
+
+@pytest.mark.parametrize("n_response", [5, 7, 9])
+def test_increasing_R2X_random(n_response):
+    X = np.random.rand(20, 8, 6, 4)
+    Y = np.random.rand(20, n_response)
+    _test_increasing_R2X(X, Y)
+
+@pytest.mark.parametrize("n_response", [5, 7, 9])
+def test_increasing_R2X(n_response, n_latent=5):
+    X, Y, _ = import_synthetic((20, 8, 6, 4), n_response, n_latent)
+    _test_increasing_R2X(X, Y, info=f"n_latent = {n_latent}")
