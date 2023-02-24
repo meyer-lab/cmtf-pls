@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 from sklearn.decomposition import PCA
@@ -17,14 +18,9 @@ N_LATENT = 8
 # Supporting Functions
 
 def _get_standard_synthetic():
-    x, y, cp_tensor = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT
-    )
+    x, y, cp_tensor = import_synthetic(TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT)
     pls = tPLS(N_LATENT)
     pls.fit(x, y)
-
     return x, y, cp_tensor, pls
 
 
@@ -32,18 +28,10 @@ def _get_standard_synthetic():
 
 def test_factor_normality():
     x, y, _, pls = _get_standard_synthetic()
-
     for x_factor in pls.X_factors[1:]:
-        assert_allclose(
-            tl.norm(x_factor, axis=0),
-            1
-        )
-
+        assert_allclose(tl.norm(x_factor, axis=0), 1)
     for y_factor in pls.Y_factors[1:]:
-        assert_allclose(
-            tl.norm(y_factor, axis=0),
-            1
-        )
+        assert_allclose(tl.norm(y_factor, axis=0), 1)
 
 
 # This method should test for factor hyper-orthogonality; components seem
@@ -76,12 +64,10 @@ def test_consistent_components():
 
 # Dimension Compatibility Tests
 
-def _test_dimension_compatibility(x_rank, n_response):
-    x, y, _ = import_synthetic(
-        tuple([100] * x_rank),
-        n_response,
-        N_LATENT
-    )
+@pytest.mark.parametrize("idims", [(2, 1), (3, 1), (4, 1), (2, 4), (3, 4), (4, 4)])
+def _test_dimension_compatibility(idims):
+    x_rank, n_response = idims
+    x, y, _ = import_synthetic(tuple([100] * x_rank), n_response, N_LATENT)
     try:
         pls = tPLS(N_LATENT)
         pls.fit(x, y)
@@ -92,38 +78,10 @@ def _test_dimension_compatibility(x_rank, n_response):
         )
 
 
-def test_compatibility_2d_x_1d_y():
-    _test_dimension_compatibility(2, 1)
-
-
-def test_compatibility_3d_x_1d_y():
-    _test_dimension_compatibility(3, 1)
-
-
-def test_compatibility_4d_x_1d_y():
-    _test_dimension_compatibility(4, 1)
-
-
-def test_compatibility_2d_x_2d_y():
-    _test_dimension_compatibility(2, 4)
-
-
-def test_compatibility_3d_x_2d_y():
-    _test_dimension_compatibility(3, 4)
-
-
-def test_compatibility_4d_x_2d_y():
-    _test_dimension_compatibility(4, 4)
-
-
 # Decomposition Accuracy Tests
 
 def test_same_x_y():
-    x, _, _ = import_synthetic(
-        (100, 100),
-        N_RESPONSE,
-        N_LATENT
-    )
+    x, _, _ = import_synthetic((100, 100), N_RESPONSE, N_LATENT)
     pls = tPLS(N_LATENT)
     pca = PCA(N_LATENT)
 
@@ -137,43 +95,27 @@ def test_same_x_y():
 
 
 def test_zero_covariance_x():
-    x, y, _ = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT
-    )
+    x, y, _ = import_synthetic(TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT)
     x[:, 0, :] = 1
     pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
-    assert_allclose(
-        pls.X_factors[1][0, :],
-        0
-    )
+    assert_allclose(pls.X_factors[1][0, :], 0)
 
 
 def test_zero_covariance_y():
-    x, y, _ = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT
-    )
+    x, y, _ = import_synthetic(TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT)
     y[:, 0] = 1
     pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
-    assert_allclose(
-        pls.Y_factors[1][0, :],
-        0
-    )
+    assert_allclose(pls.Y_factors[1][0, :], 0)
 
 
-def _test_decomposition_accuracy(x_rank, n_response):
-    x, y, true_cp = import_synthetic(
-        tuple([100] * x_rank),
-        n_response,
-        N_LATENT
-    )
+@pytest.mark.parametrize("idims", [(3, 1), (4, 1),  (3, 4), (4, 2)])
+def _test_decomposition_accuracy(idims):
+    x_rank, n_response = idims
+    x, y, true_cp = import_synthetic(tuple([100] * x_rank), n_response, N_LATENT)
     pls = tPLS(N_LATENT)
     pls.fit(x, y)
 
@@ -183,29 +125,30 @@ def _test_decomposition_accuracy(x_rank, n_response):
     assert congruence_coefficient(pls.Y_factors[1], true_cp.y_factor)[0] > 0.95
 
 
-def test_decomposition_accuracy_3d_x_1d_y():
-    _test_decomposition_accuracy(3, 1)
+def _test_increasing_R2X(X, Y, info=""):
+    R2Xs, R2Ys = [], []
+    for r in range(1, 12):
+        tpls = tPLS(r)
+        tpls.fit(X, Y)
+        R2Xs.append(tpls.mean_centered_R2X())
+        R2Ys.append(tpls.mean_centered_R2Y())
+    R2Xds = np.array([R2Xs[i + 1] - R2Xs[i] for i in range(len(R2Xs) - 1)])
+    R2Yds = np.array([R2Ys[i + 1] - R2Ys[i] for i in range(len(R2Ys) - 1)])
+    print(R2Xs, R2Ys)
+    assert np.all(np.array(R2Xds) > 0.0), "R2X is not monotonically increasing"
+    assert np.all(np.array(R2Yds) > 0.0), \
+        f"R2Y is not monotonically increasing. " \
+        f"Streak till {np.where(R2Yds <= 0.0)[0][0] + 1}-th component, " \
+        f"R2Y = {R2Ys[np.where(R2Yds <= 0.0)[0][0]]}. " \
+        f"Y shape = {Y.shape}. {info}"
 
+@pytest.mark.parametrize("n_response", [5, 7, 9])
+def test_increasing_R2X_random(n_response):
+    X = np.random.rand(20, 8, 6, 4)
+    Y = np.random.rand(20, n_response)
+    _test_increasing_R2X(X, Y)
 
-def test_decomposition_accuracy_4d_x_1d_y():
-    _test_decomposition_accuracy(4, 1)
-
-
-def test_decomposition_accuracy_3d_x_2d_y():
-    _test_decomposition_accuracy(3, 4)
-
-
-def test_decomposition_accuracy_4d_x_2d_y():
-    _test_decomposition_accuracy(4, 2)
-
-
-# Reconstruction tests -- these will likely fail!
-
-# def test_reconstruction_x():
-#     x, y, _, pls = _get_standard_synthetic()
-#     assert_allclose(pls.X_reconstructed(), x)
-#
-#
-# def test_reconstruction_y():
-#     x, y, _, pls = _get_standard_synthetic()
-#     assert_allclose(pls.Y_reconstructed(), y)
+@pytest.mark.parametrize("n_response", [5, 7, 9])
+def test_increasing_R2X(n_response, n_latent=5):
+    X, Y, _ = import_synthetic((20, 8, 6, 4), n_response, n_latent)
+    _test_increasing_R2X(X, Y, info=f"n_latent = {n_latent}")
