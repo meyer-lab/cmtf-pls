@@ -101,8 +101,8 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 oldU = self.Y_factors[0][:, a].copy()
 
             X -= factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
-            Y -= self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
-                 self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q' = T lstsq(T, u) q'
+            Y -= self.Y_factors[0][:, [a]] @ self.Y_factors[1][:, [a]].T
+            # Y -= T pinv(T) u q' = T lstsq(T, u) q'
 
 
     def predict(self, X):
