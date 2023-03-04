@@ -4,13 +4,10 @@ from collections.abc import Mapping
 from copy import copy
 
 import numpy as np
-from numpy.linalg import pinv, norm, lstsq
-import tensorly as tl
+from numpy.linalg import norm, lstsq
 from tensorly.cp_tensor import CPTensor
-from tensorly.tenalg import khatri_rao, mode_dot, multi_mode_dot, kronecker
-from tensorly.decomposition import tucker
+from tensorly.tenalg import multi_mode_dot
 from tensorly.decomposition._cp import parafac
-from tensorly import unfold
 
 def calcR2X(X, Xhat):
     if (Xhat.ndim == 2) and (X.ndim == 1):
@@ -38,15 +35,15 @@ class tPLS(Mapping, metaclass=ABCMeta):
             return self.X_factors
         elif index == 1:
             return self.Y_factors
+        elif index == 2:
+            return self.coef_
         else:
             raise IndexError
 
     def __iter__(self):
         yield self.X_factors
         yield self.Y_factors
-
-    def __len__(self):
-        return 2
+        yield self.coef_
 
     def copy(self):
         return copy(self)
@@ -75,7 +72,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         return X - self.X_mean, Y - self.Y_mean
 
 
-    def fit(self, X, Y, tol=1e-8, max_iter=1, verbose=0, method="cp"):
+    def fit(self, X, Y, tol=1e-8, max_iter=1, verbose=0):
         X, Y = self.preprocess(X, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
@@ -84,12 +81,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
                 Z_comp = [Z / norm(Z)]
                 if Z.ndim >= 2:
-                    if method == "cp":
-                        Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]
-                    elif method == "tucker": #Tucker has to be non-negative Tucker
-                        Z_comp = tucker(Z, [1] * Z.ndim)[1]
-                    else:
-                        raise NotImplementedError
+                    Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]
                 for ii in range(Z.ndim):
                     self.X_factors[ii + 1][:, a] = Z_comp[ii].flatten()
 
@@ -156,8 +148,10 @@ class tPLS(Mapping, metaclass=ABCMeta):
     def Y_reconstructed(self):
         return self.predict(self.original_X) + self.Y_mean
 
-    def mean_centered_R2X(self):
+    def R2X(self):
+        # defined as after mean-centering
         return calcR2X(self.original_X - self.X_mean, factors_to_tensor(self.X_factors))
 
-    def mean_centered_R2Y(self):
+    def R2Y(self):
+        # defined as after mean-centering
         return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_X))
