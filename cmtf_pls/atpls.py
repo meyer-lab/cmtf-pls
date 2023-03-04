@@ -75,8 +75,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
 
     def fit(self, X, Y, tol=1e-8, max_iter=1, verbose=0, method="cp"):
-        self.preprocess(X, Y)
-        X, Y = X.copy(), Y.copy()
+        X, Y = self.preprocess(X, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             self.Y_factors[0][:, a] = Y[:, 0]
@@ -113,7 +112,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         if self.X_shape[1:] != X.shape[1:]:
             raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
 
-        X = X.copy()
+        X = X.copy() - self.X_mean
         X_projection = np.zeros((X.shape[0], self.n_components))
         for a in range(self.n_components):
             X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
@@ -124,8 +123,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
     def transform(self, X, Y=None):
         if self.X_shape[1:] != X.shape[1:]:
             raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
-        X = X.copy()
-        #X -= self.X_mean
+        X = X.copy() - self.X_mean
         X_scores = np.zeros((X.shape[0], self.n_components))
 
         for a in range(self.n_components):
@@ -153,13 +151,13 @@ class tPLS(Mapping, metaclass=ABCMeta):
         return X_scores
 
     def X_reconstructed(self):
-        return factors_to_tensor(self.X_factors)
+        return factors_to_tensor(self.X_factors) + self.X_mean
 
     def Y_reconstructed(self):
-        return self.predict(self.original_X)
+        return self.predict(self.original_X) + self.Y_mean
 
     def mean_centered_R2X(self):
-        return calcR2X(self.original_X, factors_to_tensor(self.X_factors))
+        return calcR2X(self.original_X - self.X_mean, factors_to_tensor(self.X_factors))
 
     def mean_centered_R2Y(self):
-        return calcR2X(self.original_Y, self.predict(self.original_X))
+        return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_X))

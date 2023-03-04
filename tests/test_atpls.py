@@ -7,7 +7,7 @@ def test_tPLS(n_y):
     X = np.random.rand(20, 8, 6, 4)
     Y = np.random.rand(20, n_y)
     R2Xs, R2Ys = [], []
-    for r in range(1, 12):
+    for r in range(1, 20):
         tpls = tPLS(r)
         tpls.fit(X, Y)
         R2Xs.append(tpls.mean_centered_R2X())
