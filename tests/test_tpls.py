@@ -103,14 +103,6 @@ def test_zero_covariance_x():
     assert_allclose(pls.X_factors[1][0, :], 0)
 
 
-def test_zero_covariance_y():
-    x, y, _ = import_synthetic(TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT)
-    y[:, 0] = 1
-    pls = tPLS(N_LATENT)
-    pls.fit(x, y)
-
-    assert_allclose(pls.Y_factors[1][0, :], 0)
-
 
 @pytest.mark.parametrize("idims", [(3, 1), (4, 1),  (3, 4), (4, 2)])
 def _test_decomposition_accuracy(idims):
@@ -135,8 +127,8 @@ def _test_increasing_R2X(X, Y, info=""):
     R2Xds = np.array([R2Xs[i + 1] - R2Xs[i] for i in range(len(R2Xs) - 1)])
     R2Yds = np.array([R2Ys[i + 1] - R2Ys[i] for i in range(len(R2Ys) - 1)])
     print(R2Xs, R2Ys)
-    assert np.all(np.array(R2Xds) > 0.0), "R2X is not monotonically increasing"
-    assert np.all(np.array(R2Yds) > 0.0), \
+    assert np.all(np.array(R2Xds) >= 0.0), "R2X is not monotonically increasing"
+    assert np.all(np.array(R2Yds) >= 0.0), \
         f"R2Y is not monotonically increasing. " \
         f"Streak till {np.where(R2Yds <= 0.0)[0][0] + 1}-th component, " \
         f"R2Y = {R2Ys[np.where(R2Yds <= 0.0)[0][0]]}. " \

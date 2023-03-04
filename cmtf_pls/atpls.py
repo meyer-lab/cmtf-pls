@@ -45,6 +45,9 @@ class tPLS(Mapping, metaclass=ABCMeta):
         yield self.Y_factors
         yield self.coef_
 
+    def __len__(self):
+        return 3
+
     def copy(self):
         return copy(self)
 
@@ -72,7 +75,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         return X - self.X_mean, Y - self.Y_mean
 
 
-    def fit(self, X, Y, tol=1e-8, max_iter=1, verbose=0):
+    def fit(self, X, Y, tol=1e-8, max_iter=100, verbose=0):
         X, Y = self.preprocess(X, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
@@ -148,10 +151,10 @@ class tPLS(Mapping, metaclass=ABCMeta):
     def Y_reconstructed(self):
         return self.predict(self.original_X) + self.Y_mean
 
-    def R2X(self):
+    def mean_centered_R2X(self):
         # defined as after mean-centering
         return calcR2X(self.original_X - self.X_mean, factors_to_tensor(self.X_factors))
 
-    def R2Y(self):
+    def mean_centered_R2Y(self):
         # defined as after mean-centering
         return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_X))
