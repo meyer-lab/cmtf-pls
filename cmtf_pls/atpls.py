@@ -103,7 +103,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
-            X -= factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
+            X -= factors_to_tensor([ff[:, [a]] for ff in self.X_factors])
             self.coef_[:, a] = lstsq(self.X_factors[0][:, :], self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
@@ -113,28 +113,12 @@ class tPLS(Mapping, metaclass=ABCMeta):
         if self.X_shape[1:] != X.shape[1:]:
             raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
 
-        X_projections = np.zeros((X.shape[0],self.n_components))
-        X_e = X.copy()
-        Xcopy = X.copy()
-        X_e = X_e.reshape((X.shape[0],np.prod(X.shape[1:])),order='F')
+        X = X.copy()
+        X_projection = np.zeros((X.shape[0], self.n_components))
         for a in range(self.n_components):
-            weights_unfolded = kronecker([self.X_factors[m][:,a] for m in reversed(range(1,len(X.shape)))])
-            weights_unfolded = weights_unfolded.reshape(weights_unfolded.shape[0], 1)
-            X_proj1 = np.matmul(X_e, weights_unfolded).reshape(X_e.shape[0])
-            X_proj2 = multi_mode_dot(X_e.reshape((X.shape[0], *self.X_shape[1:]),order='F'), [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
-
-            X_projections[:, a] = X_proj1
-
-            #Xcopy -= factors_to_tensor([X_proj1.reshape(-1, 1)] + [ff[:, a].reshape(-1, 1) for ff in self.X_factors[1:]])
-
-
-            X_e -= X_projections[:,a].reshape(X_e.shape[0],1) @ weights_unfolded.T
-
-            print(a, np.all(np.isclose(X_proj1, X_proj2)))
-
-        F = np.arange(0, self.n_components)
-        return X_projections[:,F] @ self.coef_[F[:,None], F] @ self.Y_factors[1][:,F].T
-
+            X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+            X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
+        return X_projection @ self.coef_ @ self.Y_factors[1].T
 
 
     def transform(self, X, Y=None):
@@ -146,7 +130,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
         for a in range(self.n_components):
             X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, X.ndim))
-            X -= CPTensor((None, [X_scores[:, a].reshape((-1, 1))] + [ff[:, a].reshape((-1, 1)) for ff in self.X_factors[1:]])).to_tensor()
+            X -= CPTensor((None, [X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])).to_tensor()
 
         if Y is not None:
             Y = Y.copy()
