@@ -64,7 +64,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.original_X = X.copy()
         self.original_Y = Y.copy()
         self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
-        self.Y_factors = [np.tile(Y[:, [0]], self.n_components), np.zeros((Y.shape[1], self.n_components))]
+        self.Y_factors = [np.zeros((Y.shape[0], self.n_components)), np.zeros((Y.shape[1], self.n_components))]
             # U takes the 1st column of Y
 
         self.X_mean = np.mean(X, axis=0)
@@ -76,6 +76,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         X, Y = self.preprocess(X, Y)
 
         for a in range(self.n_components):
+            self.Y_factors[0][:, a] = Y[:, 0]
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             for iter in range(max_iter):
                 Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
