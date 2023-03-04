@@ -61,6 +61,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         # mean center the data; set up factors
         self.X_dim = X.ndim
         self.X_shape = X.shape
+        self.Y_shape = Y.shape
         self.original_X = X.copy()
         self.original_Y = Y.copy()
         self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
@@ -92,7 +93,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 for ii in range(Z.ndim):
                     self.X_factors[ii + 1][:, a] = Z_comp[ii].flatten()
 
-                self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, X.ndim))
+                self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
                 self.Y_factors[1][:, a] = Y.T @ self.X_factors[0][:, a]
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
                 self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
@@ -127,8 +128,8 @@ class tPLS(Mapping, metaclass=ABCMeta):
         X_scores = np.zeros((X.shape[0], self.n_components))
 
         for a in range(self.n_components):
-            X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, X.ndim))
-            X -= CPTensor((None, [X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])).to_tensor()
+            X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+            X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
 
         if Y is not None:
             Y = Y.copy()
@@ -144,8 +145,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
             Y_scores = np.zeros((Y.shape[0], self.n_components))
             for a in range(self.n_components):
                 Y_scores[:, a] = Y @ self.Y_factors[1][:, a]
-                Y -= X_scores @ pinv(X_scores) @ Y_scores[:, [a]] @ self.Y_factors[1][:, [a]].T
-                    # Y -= T pinv(T) u q' = T lstsq(T, u) q'
+                Y -= X_scores @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             return X_scores, Y_scores
 
         return X_scores
