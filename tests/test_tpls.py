@@ -144,3 +144,16 @@ def test_increasing_R2X_random(n_response):
 def test_increasing_R2X(n_response, n_latent=5):
     X, Y, _ = import_synthetic((20, 8, 6, 4), n_response, n_latent)
     _test_increasing_R2X(X, Y, info=f"n_latent = {n_latent}")
+
+
+def test_transform():
+    """ Test transform the original X and Y will give the first factors """
+    X = np.random.rand(20, 8, 6, 4)
+    Y = np.random.rand(20, 5)
+    tpls = tPLS(6)
+    tpls.fit(X, Y)
+    rord = np.arange(20)
+    np.random.shuffle(rord)
+    X_scores, Y_scores = tpls.transform(X[rord, :], Y[rord, :])
+    assert np.allclose(X_scores, tpls.X_factors[0][rord, :])
+    assert np.allclose(Y_scores, tpls.Y_factors[0][rord, :])

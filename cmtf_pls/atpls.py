@@ -99,7 +99,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 oldU = self.Y_factors[0][:, a].copy()
 
             X -= factors_to_tensor([ff[:, [a]] for ff in self.X_factors])
-            self.coef_[:, a] = lstsq(self.X_factors[0][:, :], self.Y_factors[0][:, a], rcond=-1)[0]
+            self.coef_[:, a] = lstsq(self.X_factors[0], self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
 
@@ -113,7 +113,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         for a in range(self.n_components):
             X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
             X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
-        return X_projection @ self.coef_ @ self.Y_factors[1].T
+        return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
 
 
     def transform(self, X, Y=None):
@@ -157,4 +157,4 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
     def mean_centered_R2Y(self):
         # defined as after mean-centering
-        return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_X))
+        return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_X) - self.Y_mean)
