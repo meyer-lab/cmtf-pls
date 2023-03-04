@@ -64,12 +64,13 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.original_X = X.copy()
         self.original_Y = Y.copy()
         self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
-        self.Y_factors = [np.tile(Y[:, [0]], self.n_components), np.zeros((Y.shape[1], self.n_components))]
+        self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
             # U takes the 1st column of Y
 
         self.X_mean = np.mean(X, axis=0)
         self.Y_mean = np.mean(Y, axis=0)
         self.coef_ = np.zeros((self.n_components, self.n_components))
+            # coef_ is a upper triangular matrix
         return X - self.X_mean, Y - self.Y_mean
 
 
@@ -77,6 +78,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.preprocess(X, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
+            self.Y_factors[0][:, a] = Y[:, 0]
             for iter in range(max_iter):
                 Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
                 Z_comp = [Z / norm(Z)]
@@ -101,11 +103,10 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 oldU = self.Y_factors[0][:, a].copy()
 
             X = X - factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
-            Y = Y - self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
-                self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q' = T lstsq(T, u) q'
-            self.coef_[0:a + 1, a] = (pinv(self.X_factors[0][:, 0:a + 1]) @ self.Y_factors[0][:, [a]]).reshape(a + 1)
-            if (a != self.n_components - 1):
-                self.Y_factors[0][:, a + 1] = Y[:, 0]
+            self.coef_[:, a] = lstsq(self.X_factors[0][:, :], self.Y_factors[0][:, a], rcond=-1)[0]
+            Y = Y - self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
+            # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
+            # why (X -= Xsub) !=== (X = X - Xsub) ?
 
 
     def predict(self, X):
