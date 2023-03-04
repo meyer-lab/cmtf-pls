@@ -23,6 +23,22 @@ def factors_to_tensor(factors):
     return CPTensor((None, factors)).to_tensor()
 
 
+def miss_tensordot(X, u, missX=None):
+    # Equivalent to np.einsum("i...,i...->...", X, u), but X with missing values at missX
+    Xdim = X.shape
+    assert Xdim[0] == u.shape[0]
+    if missX is None:
+        missX = np.isnan(X)
+    X = X.reshape(Xdim[0], -1)
+    missX = missX.reshape(Xdim[0], -1)
+    w = np.zeros((X.shape[1],))
+    for i in range(X.shape[1]):
+        m = np.where(~missX[:, i])[0]
+        if len(m) > 0:
+            w[i] = X[m, i].T @ u[m] / len(m) * Xdim[0]
+    return w.reshape(Xdim[1:])
+
+
 class tPLS(Mapping, metaclass=ABCMeta):
     """ Base class for all variants of tensor PLS """
     def __init__(self, n_components:int):
@@ -68,8 +84,11 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
             # U takes the 1st column of Y
 
-        self.X_mean = np.mean(X, axis=0)
-        self.Y_mean = np.mean(Y, axis=0)
+        self.X_hasMiss = np.any(np.isnan(X))
+        self.X_miss = np.isnan(X)   # positions of missing value, not the opposite
+
+        self.X_mean = np.nanmean(X, axis=0)
+        self.Y_mean = np.nanmean(Y, axis=0)
         self.coef_ = np.zeros((self.n_components, self.n_components))   # a upper triangular matrix
         return X - self.X_mean, Y - self.Y_mean
 
@@ -80,7 +99,11 @@ class tPLS(Mapping, metaclass=ABCMeta):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             self.Y_factors[0][:, a] = Y[:, 0]
             for iter in range(max_iter):
-                Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
+                if self.X_hasMiss:
+                    Z = miss_tensordot(X, self.Y_factors[0][:, a], self.X_miss)
+                else:
+                    Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
+                # missing value in X: solve einsum customedly; missing value in Y: PCA-NIPALS
                 Z_comp = [Z / norm(Z)]
                 if Z.ndim >= 2:
                     Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]

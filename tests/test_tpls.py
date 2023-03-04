@@ -8,6 +8,7 @@ from tensorly.metrics.factors import congruence_coefficient
 
 from cmtf_pls.synthetic import import_synthetic
 from cmtf_pls.tpls import tPLS
+from cmtf_pls.tpls import *
 
 
 TENSOR_DIMENSIONS = (100, 38, 65)
@@ -157,3 +158,22 @@ def test_transform():
     X_scores, Y_scores = tpls.transform(X[rord, :], Y[rord, :])
     assert np.allclose(X_scores, tpls.X_factors[0][rord, :])
     assert np.allclose(Y_scores, tpls.Y_factors[0][rord, :])
+
+
+def test_miss_tensordot():
+    # Test it is equivalent to np.einsum("i...,i...->...", X, u)
+    X = np.random.rand(10, 5, 4, 3)
+    X[np.random.rand(*X.shape) < 0.1] = np.nan
+    missX = np.isnan(X)
+    u = np.random.rand(10)
+    w = miss_tensordot(X, u, missX.reshape(X.shape[0], -1))
+    w2 = np.einsum("i...,i...->...", X, u)
+    assert np.allclose(w * ~np.isnan(w2), np.nan_to_num(w2))
+
+    for _ in range(10):
+        X = np.random.rand(20, 1) @ np.random.rand(8, 1).T
+        u = np.random.rand(20)
+        w = X.T @ u
+        X[np.random.rand(*X.shape) < 0.2] = np.nan
+        w1 = miss_tensordot(X, u)
+        assert np.all(norm(w-w1) / norm(w) < 0.25)
