@@ -122,8 +122,8 @@ def _test_increasing_R2X(X, Y, info=""):
     for r in range(1, 12):
         tpls = tPLS(r)
         tpls.fit(X, Y)
-        R2Xs.append(tpls.mean_centered_R2X())
-        R2Ys.append(tpls.mean_centered_R2Y())
+        R2Xs.append(tpls.R2X())
+        R2Ys.append(tpls.R2Y())
     R2Xds = np.array([R2Xs[i + 1] - R2Xs[i] for i in range(len(R2Xs) - 1)])
     R2Yds = np.array([R2Ys[i + 1] - R2Ys[i] for i in range(len(R2Ys) - 1)])
     print(R2Xs, R2Ys)
