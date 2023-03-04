@@ -69,7 +69,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
         self.X_mean = np.mean(X, axis=0)
         self.Y_mean = np.mean(Y, axis=0)
-        self.coef_ = np.zeros((self.n_components,self.n_components))
+        self.coef_ = np.zeros((self.n_components, self.n_components))
         return X - self.X_mean, Y - self.Y_mean
 
 
@@ -100,14 +100,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
-            X_pseudo = X.T.copy()
-            X_pseudo = unfold(X_pseudo, mode=len(X_pseudo.shape)-1)
-            weight = [ff[:, a] for ff in self.X_factors[1:]]
-            weight = kronecker([weight[m] for m in reversed(range(len(weight)))])
-            weight = np.expand_dims(weight, axis=1)
-            X_fac = np.expand_dims(self.X_factors[0][:, a], axis=1)
-            X_pseudo = X_pseudo - (X_fac @ weight.T)
-            X = X_pseudo.reshape(*X.shape, order='F')
+            X = X - factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
             Y = Y - self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
                 self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q' = T lstsq(T, u) q'
             self.coef_[0:a + 1, a] = (pinv(self.X_factors[0][:, 0:a + 1]) @ self.Y_factors[0][:, [a]]).reshape(a + 1)
