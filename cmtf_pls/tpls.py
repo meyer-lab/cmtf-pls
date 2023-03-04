@@ -2,6 +2,7 @@
 from abc import ABCMeta
 from collections.abc import Mapping
 from copy import copy
+from functools import reduce
 
 import numpy as np
 from numpy.linalg import norm, lstsq
@@ -37,6 +38,22 @@ def miss_tensordot(X, u, missX=None):
         if len(m) > 0:
             w[i] = X[m, i].T @ u[m] / len(m) * Xdim[0]
     return w.reshape(Xdim[1:])
+
+def miss_mmodedot(X, facs, missX=None):
+    # Equivalent to multi_mode_dot(X, fac, range(1, X.ndim)), but X with missing values at missX
+    # facs ~= [ff[:, a] for ff in self.X_factors[1:]]
+    Xdim = X.shape
+    assert all([(Xdim[i+1], ff.shape[0]) for (i, ff) in enumerate(facs)])
+    if missX is None:
+        missX = np.isnan(X)
+    X = X.reshape(Xdim[0], -1)
+    missX = missX.reshape(Xdim[0], -1)
+    t = np.zeros((Xdim[0],))
+    wkron = reduce(np.kron, facs)
+    for i in range(Xdim[0]):
+        m = np.where(~missX[i, :])[0]
+        t[i] = X[i, m] @ wkron[m]
+    return t
 
 
 class tPLS(Mapping, metaclass=ABCMeta):
@@ -85,6 +102,8 @@ class tPLS(Mapping, metaclass=ABCMeta):
             # U takes the 1st column of Y
 
         self.X_hasMiss = np.any(np.isnan(X))
+        if self.X_hasMiss:
+            print("X has missing values")
         self.X_miss = np.isnan(X)   # positions of missing value, not the opposite
 
         self.X_mean = np.nanmean(X, axis=0)
@@ -110,7 +129,10 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 for ii in range(Z.ndim):
                     self.X_factors[ii + 1][:, a] = Z_comp[ii].flatten()
 
-                self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+                if self.X_hasMiss:
+                    self.X_factors[0][:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], self.X_miss)
+                else:
+                    self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
                 self.Y_factors[1][:, a] = Y.T @ self.X_factors[0][:, a]
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
                 self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
