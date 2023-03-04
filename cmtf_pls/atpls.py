@@ -74,9 +74,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
 
     def fit(self, X, Y, tol=1e-8, max_iter=1, verbose=0, method="cp"):
-        X_m, Y_m = self.preprocess(X, Y)
-        Y=Y.reshape(Y.shape[0],1)
-        Y_e=Y.copy()
+        self.preprocess(X, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             for iter in range(max_iter):
@@ -103,18 +101,18 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 oldU = self.Y_factors[0][:, a].copy()
 
             X_pseudo = X.T.copy()
-            X_pseudo = unfold(X_pseudo,mode=len(X_pseudo.shape)-1)
-            weight=[ff[:, a] for ff in self.X_factors[1:]]
-            weight=kronecker([weight[m] for m in reversed(range(len(weight)))])
-            weight=np.expand_dims(weight,axis=1)
-            X_fac=np.expand_dims(self.X_factors[0][:, a],axis=1)
-            X_pseudo = X_pseudo-(X_fac@weight.T)
-            X=X_pseudo.reshape(*X_m.shape,order='F')
-            Y = Y-self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
-                 self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q' = T lstsq(T, u) q'
-            self.coef_[0:a+1,a] = (pinv(self.X_factors[0][:,0:a+1]) @ self.Y_factors[0][:,[a]]).reshape(a+1)
-            if(a!=self.n_components-1):
-                self.Y_factors[0][:, a+1] = Y.reshape(Y.shape[0])
+            X_pseudo = unfold(X_pseudo, mode=len(X_pseudo.shape)-1)
+            weight = [ff[:, a] for ff in self.X_factors[1:]]
+            weight = kronecker([weight[m] for m in reversed(range(len(weight)))])
+            weight = np.expand_dims(weight, axis=1)
+            X_fac = np.expand_dims(self.X_factors[0][:, a], axis=1)
+            X_pseudo = X_pseudo - (X_fac @ weight.T)
+            X = X_pseudo.reshape(*X.shape, order='F')
+            Y = Y - self.X_factors[0] @ pinv(self.X_factors[0]) @ self.Y_factors[0][:, [a]] @ \
+                self.Y_factors[1][:, [a]].T  # Y -= T pinv(T) u q' = T lstsq(T, u) q'
+            self.coef_[0:a + 1, a] = (pinv(self.X_factors[0][:, 0:a + 1]) @ self.Y_factors[0][:, [a]]).reshape(a + 1)
+            if (a != self.n_components - 1):
+                self.Y_factors[0][:, a + 1] = Y[:, 0]
 
 
     def predict(self, X):
@@ -122,17 +120,16 @@ class tPLS(Mapping, metaclass=ABCMeta):
             raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
 
         X_size = X.shape
-        X_order = len(X.shape)
         X_projections = np.zeros((X_size[0],self.n_components))
         X_e = X.copy()
         X_e = X_e.reshape((X.shape[0],np.prod(X.shape[1:])),order='F')
         for Factor in range(1, self.n_components+1):
             weights_unfolded = kronecker([self.X_factors[m][:,Factor-1] for m in reversed(range(1,len(X.shape)))])
-            weights_unfolded = weights_unfolded.reshape(weights_unfolded.shape[0],1)
+            weights_unfolded = weights_unfolded.reshape(weights_unfolded.shape[0], 1)
             X_projections[:,Factor-1] = np.matmul(X_e, weights_unfolded).reshape(X_e.shape[0])
-            X_e = X_e - np.matmul(X_projections[:,Factor-1].reshape(X_e.shape[0],1), weights_unfolded.T)
+            X_e -= X_projections[:,Factor-1].reshape(X_e.shape[0],1) @ weights_unfolded.T
         F = np.arange(0, self.n_components)
-        return np.matmul(np.matmul(X_projections[:,F], self.coef_[F[:,None], F]),self.Y_factors[1][:,F].T)
+        return X_projections[:,F] @ self.coef_[F[:,None], F] @ self.Y_factors[1][:,F].T
 
 
 

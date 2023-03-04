@@ -1,9 +1,11 @@
 from cmtf_pls.atpls import *
+import pytest
 
-def test_tPLS():
+@pytest.mark.parametrize("n_y", [1, 3, 5])
+def test_tPLS(n_y):
     np.random.seed(25)
     X = np.random.rand(20, 8, 6, 4)
-    Y = np.random.rand(20, 1)
+    Y = np.random.rand(20, n_y)
     R2Xs, R2Ys = [], []
     for r in range(1, 12):
         tpls = tPLS(r)
