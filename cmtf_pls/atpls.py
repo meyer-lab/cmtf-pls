@@ -76,6 +76,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
     def fit(self, X, Y, tol=1e-8, max_iter=1, verbose=0, method="cp"):
         self.preprocess(X, Y)
+        X, Y = X.copy(), Y.copy()
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             self.Y_factors[0][:, a] = Y[:, 0]
@@ -102,11 +103,10 @@ class tPLS(Mapping, metaclass=ABCMeta):
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
-            X = X - factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
+            X -= factors_to_tensor([ff[:, a].reshape(-1, 1) for ff in self.X_factors])
             self.coef_[:, a] = lstsq(self.X_factors[0][:, :], self.Y_factors[0][:, a], rcond=-1)[0]
-            Y = Y - self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
+            Y -= self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
-            # why (X -= Xsub) !=== (X = X - Xsub) ?
 
 
     def predict(self, X):
