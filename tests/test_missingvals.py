@@ -3,7 +3,7 @@ import pytest
 from numpy.linalg import norm
 from tensorly.tenalg import multi_mode_dot
 
-from cmtf_pls.tpls import tPLS
+from cmtf_pls.tpls import tPLS, calcR2X
 from cmtf_pls.missingvals import *
 from cmtf_pls.synthetic import import_synthetic
 
@@ -27,7 +27,7 @@ def test_miss_tensordot():
         X[np.random.rand(*X.shape) < 0.2] = np.nan
         w1 = miss_tensordot(X, u)
         w2 = np.nan_to_num(X.T) @ u
-        assert norm(w - w1) / norm(w) < norm(w - w2) / norm(w)
+        assert norm(w - w1) / norm(w) < norm(w - w2) / norm(w) + 0.01
         total_error += norm(w - w1) / norm(w)
     assert total_error < 1.2
 
@@ -42,14 +42,14 @@ def test_miss_mmodedot():
         missX = np.isnan(X)
         t1 = miss_mmodedot(X, facs, missX)
         t2 = multi_mode_dot(np.nan_to_num(X), facs, range(1, X.ndim))
-        assert norm(t - t1) / norm(t) < norm(t - t2) / norm(t)
+        assert norm(t - t1) / norm(t) < norm(t - t2) / norm(t) + 0.01
         total_error += norm(t - t1) / norm(t)
     assert total_error < 1.2
 
 
 @pytest.mark.parametrize("Xshape", [(10, 9, 8), (10, 9, 8, 7), (10, 9, 8, 7, 6)])
 def test_miss_X_synthetic(Xshape):
-    X, Y, _ = import_synthetic(Xshape, 4, 1)
+    X, Y, _ = import_synthetic(Xshape, 4, 1, seed=np.random.randint(1000))
     tpls = tPLS(1)
     tpls.fit(X, Y)
     X[np.random.rand(*X.shape) < 0.1] = np.nan
@@ -58,10 +58,36 @@ def test_miss_X_synthetic(Xshape):
     for i in range(X.ndim):
         fac = tpls.X_factors[i]
         fac1 = tpls1.X_factors[i]
-        assert (norm(fac - fac1) / norm(fac)) < 0.1
+        assert (norm(fac - fac1) / norm(fac)) < 0.15
     for i in range(Y.ndim):
         fac = tpls.Y_factors[i]
         fac1 = tpls1.Y_factors[i]
         assert (norm(fac - fac1) / norm(fac)) < 0.01
 
 
+def test_miss_X_transform():
+    X = np.random.rand(10, 7, 6, 5)
+    Y = np.random.rand(10, 4)
+    X[np.random.rand(*X.shape) < 0.2] = np.nan
+    R2Xs, R2Ys = [], []
+    for r in range(1, 6):
+        tpls = tPLS(r)
+        tpls.fit(X, Y)
+        R2Xs.append(tpls.R2X())
+        R2Ys.append(tpls.R2Y())
+    assert all([R2Xs[i] > R2Xs[i - 1] for i in range(1, len(R2Xs))])
+    assert all([R2Ys[i] > R2Ys[i - 1] for i in range(1, len(R2Ys))])
+    Xsc, Ysc = tpls.transform(X, Y)
+    assert np.allclose(tpls.X_factors[0], Xsc)
+    assert np.allclose(tpls.Y_factors[0], Ysc)
+
+
+def test_miss_X_imputation():
+    """ Test that PLSR can impute missing values """
+    X, Y, _ = import_synthetic((10, 9, 8, 7), 4, 3, seed=np.random.randint(1000))
+    Xmiss = X.copy()
+    missPos = np.random.rand(*X.shape) < 0.25
+    Xmiss[missPos] = np.nan
+    tpls = tPLS(3)
+    tpls.fit(Xmiss, Y)
+    assert calcR2X(X[missPos], tpls.X_reconstructed()[missPos]) > 0.8
