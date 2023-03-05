@@ -94,7 +94,6 @@ class tPLS(Mapping, metaclass=ABCMeta):
                     Z = miss_tensordot(X, self.Y_factors[0][:, a], self.X_miss)
                 else:
                     Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
-                # missing value in X: solve einsum customedly; missing value in Y: PCA-NIPALS
                 Z_comp = [Z / norm(Z)]
                 if Z.ndim >= 2:
                     Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]
@@ -126,8 +125,14 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
         X = X.copy() - self.X_mean
         X_projection = np.zeros((X.shape[0], self.n_components))
+        X_hasMiss = np.any(np.isnan(X))
+        X_miss = np.isnan(X)
+
         for a in range(self.n_components):
-            X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+            if X_hasMiss:
+                X_projection[:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], X_miss)
+            else:
+                X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
             X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
         return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
 
@@ -135,11 +140,17 @@ class tPLS(Mapping, metaclass=ABCMeta):
     def transform(self, X, Y=None):
         if self.X_shape[1:] != X.shape[1:]:
             raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
+
         X = X.copy() - self.X_mean
         X_scores = np.zeros((X.shape[0], self.n_components))
+        X_hasMiss = np.any(np.isnan(X))
+        X_miss = np.isnan(X)
 
         for a in range(self.n_components):
-            X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+            if X_hasMiss:
+                X_scores[:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], X_miss)
+            else:
+                X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
             X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
 
         if Y is not None:
