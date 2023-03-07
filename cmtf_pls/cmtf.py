@@ -113,8 +113,8 @@ class ctPLS(Mapping, metaclass=ABCMeta):
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
-            for (i, X) in enumerate(Xs):
-                X -= factors_to_tensor([ff[:, [a]] for ff in self.Xs_factors[i]])
+            for (ti, X) in enumerate(Xs):
+                X -= factors_to_tensor([ff[:, [a]] for ff in self.Xs_factors[ti]])
             self.coef_[:, a] = lstsq(self.factor_T, self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.factor_T @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
@@ -137,15 +137,21 @@ class ctPLS(Mapping, metaclass=ABCMeta):
         return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
 
 
-    def transform(self, X, Y=None):
-        if self.X_shape[1:] != X.shape[1:]:
-            raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
-        X = X.copy() - self.X_mean
-        X_scores = np.zeros((X.shape[0], self.n_components))
+    def transform(self, Xs, Y=None):
+        Xs = [X.copy() for X in Xs]
+        for (ti, X) in enumerate(Xs):
+            if self.Xs_shape[ti][1:] != X.shape[1:]:
+                raise ValueError(f"Training X{ti} has shape {self.Xs_shape[ti]}, while the new X has shape {X.shape}")
+            Xs[ti] -= self.Xs_mean[ti]
+        X_scores = np.zeros((Xs[0].shape[0], self.n_components))
 
         for a in range(self.n_components):
-            X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
-            X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
+            Ts = [multi_mode_dot(Xs[ti],
+                                 [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                 range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)]
+            X_scores[:, a] = np.average(Ts, axis=0)
+            for (ti, X) in enumerate(Xs):
+                X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.Xs_factors[ti][1:]])
 
         if Y is not None:
             Y = Y.copy()
