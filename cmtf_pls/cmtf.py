@@ -103,7 +103,7 @@ class ctPLS(Mapping, metaclass=ABCMeta):
                 Ts = [multi_mode_dot(Xs[ti],
                                      [ff[:, a] for ff in self.Xs_factors[ti][1:]],
                                      range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)]
-                self.factor_T[:, a] = np.mean(Ts, axis=0)
+                self.factor_T[:, a] = np.average(Ts, axis=0)
                 self.Y_factors[1][:, a] = Y.T @ self.factor_T[:, a]
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
                 self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
@@ -112,7 +112,6 @@ class ctPLS(Mapping, metaclass=ABCMeta):
                         print("Comp {}: converged after {} iterations".format(a, iter))
                     break
                 oldU = self.Y_factors[0][:, a].copy()
-                print(f"a={a}, iter={iter}, R2Xs={self.R2Xs()}, R2Y={self.R2Y()}")
 
             for (i, X) in enumerate(Xs):
                 X -= factors_to_tensor([ff[:, [a]] for ff in self.Xs_factors[i]])
@@ -129,9 +128,10 @@ class ctPLS(Mapping, metaclass=ABCMeta):
             Xs[ti] -= self.Xs_mean[ti]
         X_projection = np.zeros((Xs[0].shape[0], self.n_components))
         for a in range(self.n_components):
-            X_projection[:, a] = np.mean([multi_mode_dot(Xs[ti],
-                                         [ff[:, a] for ff in self.Xs_factors[ti][1:]],
-                                         range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)], axis=0)
+            X_projection[:, a] = np.average([multi_mode_dot(Xs[ti],
+                                                            [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                                            range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)],
+                                            axis=0)
             for (ti, X) in enumerate(Xs):
                 X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.Xs_factors[ti][1:]])
         return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
