@@ -2,7 +2,6 @@
 from abc import ABCMeta
 from collections.abc import Mapping
 from copy import copy
-from functools import reduce
 
 import numpy as np
 from numpy.linalg import norm, lstsq
@@ -10,24 +9,6 @@ from tensorly.tenalg import multi_mode_dot
 from tensorly.decomposition._cp import parafac
 
 from .tpls import calcR2X, factors_to_tensor
-
-
-
-def multi_mmodedot(Xs, facss):
-    """
-    Equivalent to multi_mode_dot(X, fac, range(1, X.ndim)) for multiple Xs
-    Xs: a list of X
-    faccs: a list of facs, each to respective X, and each facs == X_factors[1:]
-    """
-    X0dim = Xs[0].shape[0]
-    assert len(Xs) == len(facss)
-    for ti in range(len(Xs)):
-        assert X0dim == Xs[ti].shape[0]
-        assert np.all(np.equal(Xs[ti].shape[1:], np.array([ff.shape[0] for ff in facss[ti]])))
-
-    Xr = np.hstack([X.reshape(X0dim, -1) for X in Xs])
-    wkronr = np.concatenate([reduce(np.kron, facs) for facs in facss])
-    return (Xr @ wkronr).ravel()
 
 
 class ctPLS(Mapping, metaclass=ABCMeta):
@@ -183,7 +164,7 @@ class ctPLS(Mapping, metaclass=ABCMeta):
         return calcR2X(self.original_Xs[idx] - self.Xs_mean[idx], factors_to_tensor(self.Xs_factors[idx]))
 
     def R2Xs(self):
-        return [self.R2X(i) for i in range(self.Xs_len)]
+        return np.array([self.R2X(i) for i in range(self.Xs_len)])
 
     def R2Y(self):
         # defined as after mean-centering
