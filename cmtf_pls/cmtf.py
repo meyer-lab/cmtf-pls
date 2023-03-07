@@ -6,7 +6,6 @@ from functools import reduce
 
 import numpy as np
 from numpy.linalg import norm, lstsq
-from tensorly.cp_tensor import CPTensor
 from tensorly.tenalg import multi_mode_dot
 from tensorly.decomposition._cp import parafac
 
@@ -101,7 +100,10 @@ class ctPLS(Mapping, metaclass=ABCMeta):
                     for ii in range(Z.ndim):
                         self.Xs_factors[ti][ii + 1][:, a] = Z_comp[ii].flatten()
 
-                self.factor_T[:, a] = multi_mmodedot(Xs, [[ff[:, a] for ff in facs[1:]] for facs in self.Xs_factors])
+                Ts = [multi_mode_dot(Xs[ti],
+                                     [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                     range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)]
+                self.factor_T[:, a] = np.mean(Ts, axis=0)
                 self.Y_factors[1][:, a] = Y.T @ self.factor_T[:, a]
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
                 self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
@@ -110,7 +112,7 @@ class ctPLS(Mapping, metaclass=ABCMeta):
                         print("Comp {}: converged after {} iterations".format(a, iter))
                     break
                 oldU = self.Y_factors[0][:, a].copy()
-                print(f"a={a}, iter={iter}, R2Xs={self.R2Xs()}, R2Ys={self.R2Y()}")
+                print(f"a={a}, iter={iter}, R2Xs={self.R2Xs()}, R2Y={self.R2Y()}")
 
             for (i, X) in enumerate(Xs):
                 X -= factors_to_tensor([ff[:, [a]] for ff in self.Xs_factors[i]])
@@ -120,14 +122,16 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
 
     def predict(self, Xs):
+        Xs = [X.copy() for X in Xs]
         for (ti, X) in enumerate(Xs):
             if self.Xs_shape[ti][1:] != X.shape[1:]:
                 raise ValueError(f"Training X{ti} has shape {self.Xs_shape[ti]}, while the new X has shape {X.shape}")
             Xs[ti] -= self.Xs_mean[ti]
-
         X_projection = np.zeros((Xs[0].shape[0], self.n_components))
         for a in range(self.n_components):
-            X_projection[:, a] = multi_mmodedot(Xs, [[ff[:, a] for ff in facs[1:]] for facs in self.Xs_factors])
+            X_projection[:, a] = np.mean([multi_mode_dot(Xs[ti],
+                                         [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                         range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)], axis=0)
             for (ti, X) in enumerate(Xs):
                 X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.Xs_factors[ti][1:]])
         return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
