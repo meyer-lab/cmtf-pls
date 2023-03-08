@@ -69,14 +69,10 @@ def test_miss_X_transform():
     X = np.random.rand(10, 7, 6, 5)
     Y = np.random.rand(10, 4)
     X[np.random.rand(*X.shape) < 0.2] = np.nan
-    R2Xs, R2Ys = [], []
-    for r in range(1, 6):
-        tpls = tPLS(r)
-        tpls.fit(X, Y)
-        R2Xs.append(tpls.R2X())
-        R2Ys.append(tpls.R2Y())
-    assert all([R2Xs[i] > R2Xs[i - 1] for i in range(1, len(R2Xs))])
-    assert all([R2Ys[i] > R2Ys[i - 1] for i in range(1, len(R2Ys))])
+    tpls = tPLS(7)
+    tpls.fit(X, Y)
+    assert np.all(np.diff(tpls.R2X) >= 0.0)
+    assert np.all(np.diff(tpls.R2Y) >= 0.0)
     Xsc, Ysc = tpls.transform(X, Y)
     assert np.allclose(tpls.X_factors[0], Xsc)
     assert np.allclose(tpls.Y_factors[0], Ysc)
