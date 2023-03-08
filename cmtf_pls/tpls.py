@@ -5,7 +5,7 @@ from copy import copy
 
 import numpy as np
 from numpy.linalg import norm, lstsq
-from tensorly.cp_tensor import CPTensor
+from tensorly.cp_tensor import cp_to_tensor
 from tensorly.tenalg import multi_mode_dot
 from tensorly.decomposition._cp import parafac
 
@@ -20,7 +20,7 @@ def calcR2X(X, Xhat):
     return 1 - top / bottom
 
 def factors_to_tensor(factors):
-    return CPTensor((None, factors)).to_tensor()
+    return cp_to_tensor((None, factors))
 
 
 class tPLS(Mapping, metaclass=ABCMeta):
@@ -62,11 +62,11 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.X_dim = X.ndim
         self.X_shape = X.shape
         self.Y_shape = Y.shape
-        self.original_X = X.copy()
-        self.original_Y = Y.copy()
         self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
         self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
             # U takes the 1st column of Y
+        self.R2X = np.zeros((self.n_components))
+        self.R2Y = np.zeros((self.n_components))
 
         self.X_mean = np.mean(X, axis=0)
         self.Y_mean = np.mean(Y, axis=0)
@@ -75,6 +75,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
 
     def fit(self, X, Y, tol=1e-8, max_iter=100, verbose=0):
+        original_X, original_Y = X.copy(), Y.copy()
         X, Y = self.preprocess(X, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
@@ -101,6 +102,8 @@ class tPLS(Mapping, metaclass=ABCMeta):
             self.coef_[:, a] = lstsq(self.X_factors[0], self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
+            self.R2X[a] = calcR2X(original_X - self.X_mean, factors_to_tensor(self.X_factors))
+            self.R2Y[a] = calcR2X(original_Y - self.Y_mean, self.predict(original_X) - self.Y_mean)
 
 
     def predict(self, X):
@@ -144,16 +147,3 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
         return X_scores
 
-    def X_reconstructed(self):
-        return factors_to_tensor(self.X_factors) + self.X_mean
-
-    def Y_reconstructed(self):
-        return self.predict(self.original_X) + self.Y_mean
-
-    def R2X(self):
-        # defined as after mean-centering
-        return calcR2X(self.original_X - self.X_mean, factors_to_tensor(self.X_factors))
-
-    def R2Y(self):
-        # defined as after mean-centering
-        return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_X) - self.Y_mean)
