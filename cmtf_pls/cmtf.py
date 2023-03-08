@@ -60,6 +60,8 @@ class ctPLS(Mapping, metaclass=ABCMeta):
         self.factor_T = np.zeros((self.Y_shape[0], self.n_components))
         self.Xs_factors = [[self.factor_T] + [np.zeros((l, self.n_components)) for l in X.shape[1:]] for X in Xs]
         self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
+        self.R2Xs = [np.zeros((self.n_components)) for _ in range(self.Xs_len)]
+        self.R2Y = np.zeros((self.n_components))
 
         self.Xs_mean = [np.mean(X, axis=0) for X in Xs]
         self.Y_mean = np.mean(Y, axis=0)
@@ -68,6 +70,7 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
 
     def fit(self, Xs, Y, tol=1e-8, max_iter=100, verbose=0):
+        oXs, oY = [X.copy() for X in Xs], Y.copy()
         Xs, Y = self.preprocess(Xs, Y)
         for a in range(self.n_components):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
@@ -96,8 +99,10 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
             for (ti, X) in enumerate(Xs):
                 X -= factors_to_tensor([ff[:, [a]] for ff in self.Xs_factors[ti]])
+                self.R2Xs[ti][a] = calcR2X(oXs[ti] - self.Xs_mean[ti], factors_to_tensor(self.Xs_factors[ti]))
             self.coef_[:, a] = lstsq(self.factor_T, self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.factor_T @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
+            self.R2Y[a] = calcR2X(oY - self.Y_mean, self.predict(oXs) - self.Y_mean)
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
 
 
@@ -153,19 +158,5 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
         return X_scores
 
-    def X_reconstructed(self):
-        return factors_to_tensor(self.X_factors) + self.X_mean
-
-    def Y_reconstructed(self):
-        return self.predict(self.original_X) + self.Y_mean
-
-    def R2X(self, idx):
-        # defined as after mean-centering
-        return calcR2X(self.original_Xs[idx] - self.Xs_mean[idx], factors_to_tensor(self.Xs_factors[idx]))
-
-    def R2Xs(self):
-        return np.array([self.R2X(i) for i in range(self.Xs_len)])
-
-    def R2Y(self):
-        # defined as after mean-centering
-        return calcR2X(self.original_Y - self.Y_mean, self.predict(self.original_Xs) - self.Y_mean)
+    def Xs_reconstructed(self):
+        return [factors_to_tensor(self.Xs_factors[ti]) + self.Xs_mean[ti] for ti in range(self.Xs_len)]
