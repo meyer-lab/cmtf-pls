@@ -175,3 +175,5 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
         return X_scores
 
+    def X_reconstructed(self):
+        return factors_to_tensor(self.X_factors) + self.X_mean
