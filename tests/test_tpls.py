@@ -118,20 +118,13 @@ def _test_decomposition_accuracy(idims):
 
 
 def _test_increasing_R2X(X, Y, info=""):
-    R2Xs, R2Ys = [], []
-    for r in range(1, 12):
-        tpls = tPLS(r)
-        tpls.fit(X, Y)
-        R2Xs.append(tpls.R2X())
-        R2Ys.append(tpls.R2Y())
-    R2Xds = np.array([R2Xs[i + 1] - R2Xs[i] for i in range(len(R2Xs) - 1)])
-    R2Yds = np.array([R2Ys[i + 1] - R2Ys[i] for i in range(len(R2Ys) - 1)])
-    print(R2Xs, R2Ys)
-    assert np.all(np.array(R2Xds) >= 0.0), "R2X is not monotonically increasing"
-    assert np.all(np.array(R2Yds) >= 0.0), \
+    tpls = tPLS(12)
+    tpls.fit(X, Y)
+    assert np.all(np.diff(tpls.R2X) >= 0.0), "R2X is not monotonically increasing"
+    assert np.all(np.diff(tpls.R2Y) >= 0.0), \
         f"R2Y is not monotonically increasing. " \
-        f"Streak till {np.where(R2Yds <= 0.0)[0][0] + 1}-th component, " \
-        f"R2Y = {R2Ys[np.where(R2Yds <= 0.0)[0][0]]}. " \
+        f"Streak till {np.where(np.diff(tpls.R2Y) <= 0.0)[0][0] + 1}-th component, " \
+        f"R2Y = {tpls.R2Y[np.where(np.diff(tpls.R2Y) <= 0.0)[0][0]]}. " \
         f"Y shape = {Y.shape}. {info}"
 
 @pytest.mark.parametrize("n_response", [5, 7, 9])
