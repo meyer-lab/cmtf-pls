@@ -3,24 +3,13 @@ from abc import ABCMeta
 from collections.abc import Mapping
 from copy import copy
 
+
 import numpy as np
 from numpy.linalg import norm, lstsq
-from tensorly.cp_tensor import cp_to_tensor
-from tensorly.tenalg import multi_mode_dot
+from tensorly.tenalg import multi_mode_dot, outer
 from tensorly.decomposition._cp import parafac
-
-def calcR2X(X, Xhat):
-    if (Xhat.ndim == 2) and (X.ndim == 1):
-        X = X.reshape(-1, 1)
-    assert X.shape == Xhat.shape
-    mask = np.isfinite(X)
-    xIn = np.nan_to_num(X)
-    top = norm(Xhat * mask - xIn) ** 2.0
-    bottom = norm(xIn) ** 2.0
-    return 1 - top / bottom
-
-def factors_to_tensor(factors):
-    return cp_to_tensor((None, factors))
+from .util import calcR2X, factors_to_tensor
+from .missingvals import miss_tensordot, miss_mmodedot
 
 
 class tPLS(Mapping, metaclass=ABCMeta):
@@ -68,8 +57,13 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.R2X = np.zeros((self.n_components))
         self.R2Y = np.zeros((self.n_components))
 
-        self.X_mean = np.mean(X, axis=0)
-        self.Y_mean = np.mean(Y, axis=0)
+        self.X_hasMiss = np.any(np.isnan(X))
+        if self.X_hasMiss:
+            print("X has missing values")
+        self.X_miss = np.isnan(X)   # positions of missing value, not the opposite
+
+        self.X_mean = np.nanmean(X, axis=0)
+        self.Y_mean = np.nanmean(Y, axis=0)
         self.coef_ = np.zeros((self.n_components, self.n_components))   # a upper triangular matrix
         return X - self.X_mean, Y - self.Y_mean
 
@@ -81,14 +75,20 @@ class tPLS(Mapping, metaclass=ABCMeta):
             oldU = np.ones_like(self.Y_factors[0][:, a]) * np.inf
             self.Y_factors[0][:, a] = Y[:, 0]
             for iter in range(max_iter):
-                Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
+                if self.X_hasMiss:
+                    Z = miss_tensordot(X, self.Y_factors[0][:, a], self.X_miss)
+                else:
+                    Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
                 Z_comp = [Z / norm(Z)]
                 if Z.ndim >= 2:
                     Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]
                 for ii in range(Z.ndim):
                     self.X_factors[ii + 1][:, a] = Z_comp[ii].flatten()
 
-                self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+                if self.X_hasMiss:
+                    self.X_factors[0][:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], self.X_miss)
+                else:
+                    self.X_factors[0][:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
                 self.Y_factors[1][:, a] = Y.T @ self.X_factors[0][:, a]
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
                 self.Y_factors[0][:, a] = Y @ self.Y_factors[1][:, a]
@@ -98,7 +98,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
-            X -= factors_to_tensor([ff[:, [a]] for ff in self.X_factors])
+            X -= outer([ff[:, a] for ff in self.X_factors])
             self.coef_[:, a] = lstsq(self.X_factors[0], self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
@@ -112,21 +112,33 @@ class tPLS(Mapping, metaclass=ABCMeta):
 
         X = X.copy() - self.X_mean
         X_projection = np.zeros((X.shape[0], self.n_components))
+        X_hasMiss = np.any(np.isnan(X))
+        X_miss = np.isnan(X)
+
         for a in range(self.n_components):
-            X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
-            X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
+            if X_hasMiss:
+                X_projection[:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], X_miss)
+            else:
+                X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+            X -= outer([X_projection[:, a]] + [ff[:, a] for ff in self.X_factors[1:]])
         return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
 
 
     def transform(self, X, Y=None):
         if self.X_shape[1:] != X.shape[1:]:
             raise ValueError(f"Training X has shape {self.X_shape}, while the new X has shape {X.shape}")
+
         X = X.copy() - self.X_mean
         X_scores = np.zeros((X.shape[0], self.n_components))
+        X_hasMiss = np.any(np.isnan(X))
+        X_miss = np.isnan(X)
 
         for a in range(self.n_components):
-            X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
-            X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
+            if X_hasMiss:
+                X_scores[:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], X_miss)
+            else:
+                X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
+            X -= outer([X_scores[:, a]] + [ff[:, a] for ff in self.X_factors[1:]])
 
         if Y is not None:
             Y = Y.copy()
