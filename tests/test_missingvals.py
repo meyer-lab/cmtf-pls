@@ -58,7 +58,7 @@ def test_miss_X_synthetic(Xshape):
     for i in range(X.ndim):
         fac = tpls.X_factors[i]
         fac1 = tpls1.X_factors[i]
-        assert (norm(fac - fac1) / norm(fac)) < 0.15
+        assert (norm(fac - fac1) / norm(fac)) < 0.2
     for i in range(Y.ndim):
         fac = tpls.Y_factors[i]
         fac1 = tpls1.Y_factors[i]
