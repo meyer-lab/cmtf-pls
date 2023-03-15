@@ -150,3 +150,4 @@ def test_transform():
     X_scores, Y_scores = tpls.transform(X[rord, :], Y[rord, :])
     assert np.allclose(X_scores, tpls.X_factors[0][rord, :])
     assert np.allclose(Y_scores, tpls.Y_factors[0][rord, :])
+
