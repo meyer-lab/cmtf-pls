@@ -8,7 +8,8 @@ from numpy.linalg import norm, lstsq
 from tensorly.tenalg import multi_mode_dot
 from tensorly.decomposition._cp import parafac
 
-from .tpls import calcR2X, factors_to_tensor
+from .util import calcR2X, factors_to_tensor
+from .missingvals import miss_tensordot, miss_mmodedot
 
 
 class ctPLS(Mapping, metaclass=ABCMeta):
@@ -55,17 +56,22 @@ class ctPLS(Mapping, metaclass=ABCMeta):
         self.Xs_dim = [X.ndim for X in Xs]
         self.Xs_shape = [X.shape for X in Xs]
         self.Y_shape = Y.shape
-        self.original_Xs = [X.copy() for X in Xs]
-        self.original_Y = Y.copy()
+
         self.factor_T = np.zeros((self.Y_shape[0], self.n_components))
         self.Xs_factors = [[self.factor_T] + [np.zeros((l, self.n_components)) for l in X.shape[1:]] for X in Xs]
         self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
+        self.coef_ = np.zeros((self.n_components, self.n_components))  # a upper triangular matrix
+
         self.R2Xs = [np.zeros((self.n_components)) for _ in range(self.Xs_len)]
         self.R2Y = np.zeros((self.n_components))
 
-        self.Xs_mean = [np.mean(X, axis=0) for X in Xs]
-        self.Y_mean = np.mean(Y, axis=0)
-        self.coef_ = np.zeros((self.n_components, self.n_components))   # a upper triangular matrix
+        self.Xs_mean = [np.nanmean(X, axis=0) for X in Xs]
+        self.Y_mean = np.nanmean(Y, axis=0)
+
+        self.Xs_hasMiss = [np.any(np.isnan(X)) for X in Xs]
+        if any(self.Xs_hasMiss):
+            print("At least one X has missing values")
+        self.Xs_miss = [np.isnan(X) for X in Xs]  # positions of missing value, not the opposite
         return [X - self.Xs_mean[i] for (i, X) in enumerate(Xs)], Y - self.Y_mean
 
 
@@ -77,7 +83,11 @@ class ctPLS(Mapping, metaclass=ABCMeta):
             self.Y_factors[0][:, a] = Y[:, 0]
             for iter in range(max_iter):
                 for (ti, X) in enumerate(Xs):
-                    Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
+                    if not self.Xs_hasMiss[ti]:
+                        Z = np.einsum("i...,i...->...", X, self.Y_factors[0][:, a])
+                    else:
+                        Z = miss_tensordot(X, self.Y_factors[0][:, a], self.Xs_miss[ti])
+
                     Z_comp = [Z / norm(Z)]
                     if Z.ndim >= 2:
                         Z_comp = parafac(Z, 1, tol=tol, init="svd", normalize_factors=True)[1]
@@ -86,7 +96,12 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
                 Ts = [multi_mode_dot(Xs[ti],
                                      [ff[:, a] for ff in self.Xs_factors[ti][1:]],
-                                     range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)]
+                                     range(1, self.Xs_dim[ti]))
+                      if not self.Xs_hasMiss[ti] else
+                      miss_mmodedot(Xs[ti],
+                                    [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                    self.Xs_miss[ti])
+                      for ti in range(self.Xs_len)]
                 self.factor_T[:, a] = np.average(Ts, axis=0)
                 self.Y_factors[1][:, a] = Y.T @ self.factor_T[:, a]
                 self.Y_factors[1][:, a] /= norm(self.Y_factors[1][:, a])
@@ -108,15 +123,23 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
     def predict(self, Xs):
         Xs = [X.copy() for X in Xs]
+        assert len(Xs) == self.Xs_len
+        Xs_hasMiss = [np.any(np.isnan(X)) for X in Xs]
+        Xs_miss = [np.isnan(X) for X in Xs]
         for (ti, X) in enumerate(Xs):
             if self.Xs_shape[ti][1:] != X.shape[1:]:
-                raise ValueError(f"Training X{ti} has shape {self.Xs_shape[ti]}, while the new X has shape {X.shape}")
+                raise ValueError(f"Training X[{ti}] has shape {self.Xs_shape[ti]}, while the new X has shape {X.shape}")
             Xs[ti] -= self.Xs_mean[ti]
         X_projection = np.zeros((Xs[0].shape[0], self.n_components))
         for a in range(self.n_components):
             X_projection[:, a] = np.average([multi_mode_dot(Xs[ti],
                                                             [ff[:, a] for ff in self.Xs_factors[ti][1:]],
-                                                            range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)],
+                                                            range(1, self.Xs_dim[ti]))
+                                             if not Xs_hasMiss[ti] else
+                                             miss_mmodedot(Xs[ti],
+                                                           [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                                           Xs_miss[ti])
+                                             for ti in range(self.Xs_len)],
                                             axis=0)
             for (ti, X) in enumerate(Xs):
                 X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.Xs_factors[ti][1:]])
@@ -125,16 +148,25 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
     def transform(self, Xs, Y=None):
         Xs = [X.copy() for X in Xs]
+        assert len(Xs) == self.Xs_len
+        Xs_hasMiss = [np.any(np.isnan(X)) for X in Xs]
+        Xs_miss = [np.isnan(X) for X in Xs]
         for (ti, X) in enumerate(Xs):
             if self.Xs_shape[ti][1:] != X.shape[1:]:
-                raise ValueError(f"Training X{ti} has shape {self.Xs_shape[ti]}, while the new X has shape {X.shape}")
+                raise ValueError(f"Training X[{ti}] has shape {self.Xs_shape[ti]}, while the new X has shape {X.shape}")
             Xs[ti] -= self.Xs_mean[ti]
         X_scores = np.zeros((Xs[0].shape[0], self.n_components))
 
         for a in range(self.n_components):
             Ts = [multi_mode_dot(Xs[ti],
                                  [ff[:, a] for ff in self.Xs_factors[ti][1:]],
-                                 range(1, self.Xs_dim[ti])) for ti in range(self.Xs_len)]
+                                 range(1, self.Xs_dim[ti]))
+                  if not Xs_hasMiss[ti] else
+                  miss_mmodedot(Xs[ti],
+                                [ff[:, a] for ff in self.Xs_factors[ti][1:]],
+                                Xs_miss[ti])
+                  for ti in range(self.Xs_len)]
+
             X_scores[:, a] = np.average(Ts, axis=0)
             for (ti, X) in enumerate(Xs):
                 X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.Xs_factors[ti][1:]])
