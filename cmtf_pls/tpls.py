@@ -6,26 +6,9 @@ from copy import copy
 
 import numpy as np
 from numpy.linalg import norm, lstsq
-from tensorly.cp_tensor import cp_to_tensor
-from tensorly.tenalg import multi_mode_dot
+from tensorly.tenalg import multi_mode_dot, outer
 from tensorly.decomposition._cp import parafac
-
-from .missingvals import *
-
-def calcR2X(X, Xhat):
-    if (Xhat.ndim == 2) and (X.ndim == 1):
-        X = X.reshape(-1, 1)
-    assert X.shape == Xhat.shape
-    mask = np.isfinite(X)
-    xIn = np.nan_to_num(X)
-    top = norm(Xhat * mask - xIn) ** 2.0
-    bottom = norm(xIn) ** 2.0
-    return 1 - top / bottom
-
-def factors_to_tensor(factors):
-    return cp_to_tensor((None, factors))
-
-
+from .util import calcR2X, factors_to_tensor
 
 
 class tPLS(Mapping, metaclass=ABCMeta):
@@ -114,7 +97,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                     break
                 oldU = self.Y_factors[0][:, a].copy()
 
-            X -= factors_to_tensor([ff[:, [a]] for ff in self.X_factors])
+            X -= outer([ff[:, a] for ff in self.X_factors])
             self.coef_[:, a] = lstsq(self.X_factors[0], self.Y_factors[0][:, a], rcond=-1)[0]
             Y -= self.X_factors[0] @ self.coef_[:, [a]] @ self.Y_factors[1][:, [a]].T
             # Y -= T b q' = T pinv(T) u q' = T lstsq(T, u) q'; b = inv(T'T) T' u = pinv(T) u
@@ -136,7 +119,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 X_projection[:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], X_miss)
             else:
                 X_projection[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
-            X -= factors_to_tensor([X_projection[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
+            X -= outer([X_projection[:, a]] + [ff[:, a] for ff in self.X_factors[1:]])
         return X_projection @ self.coef_ @ self.Y_factors[1].T + self.Y_mean
 
 
@@ -154,7 +137,7 @@ class tPLS(Mapping, metaclass=ABCMeta):
                 X_scores[:, a] = miss_mmodedot(X, [ff[:, a] for ff in self.X_factors[1:]], X_miss)
             else:
                 X_scores[:, a] = multi_mode_dot(X, [ff[:, a] for ff in self.X_factors[1:]], range(1, self.X_dim))
-            X -= factors_to_tensor([X_scores[:, [a]]] + [ff[:, [a]] for ff in self.X_factors[1:]])
+            X -= outer([X_scores[:, a]] + [ff[:, a] for ff in self.X_factors[1:]])
 
         if Y is not None:
             Y = Y.copy()
