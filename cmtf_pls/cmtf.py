@@ -47,10 +47,13 @@ class ctPLS(Mapping, metaclass=ABCMeta):
         for X in Xs:
             assert X.shape[0] == Y.shape[0]
             assert X.ndim >= 2
+            assert np.all(np.any(np.isfinite(X), axis=0)), "Each measurement (chord) must have at least one sample."
         assert Y.ndim <= 2, "Only a matrix (2-mode tensor) Y is acceptable."
         if Y.ndim == 1:
             Y = Y.reshape(-1, 1)
-        # TODO: more data sanity check
+        assert np.all(np.any([np.any(np.isfinite(Xs[ti]), axis=tuple(i for i in range(1, Xs[ti].ndim)))
+                              for ti in range(len(Xs))], axis=0)), \
+            "Each sample must have at least one value across tensors."
 
         # mean center the data; set up factors
         self.Xs_len = len(Xs)
