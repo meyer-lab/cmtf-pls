@@ -32,5 +32,6 @@ def miss_mmodedot(X, facs, missX=None):
     Wdim = wkron.shape[0]
     for i in range(Xdim[0]):
         m = np.where(~missX[i, :])[0]
-        t[i] = X[i, m] @ wkron[m] / len(m) * Wdim
+        if len(m) > 0:
+            t[i] = X[i, m] @ wkron[m] / len(m) * Wdim
     return t
