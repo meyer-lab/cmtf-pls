@@ -47,6 +47,16 @@ def test_miss_mmodedot():
     assert total_error < 1.2
 
 
+def test_miss_mmodedot_completeMissSample():
+    """ Test that with complete missing sample slides it gives np.nan """
+    X = np.random.rand(10, 9, 8, 7)
+    X[7:, :, :, :] = np.nan
+    facs = [np.random.rand(l) for l in X.shape[1:]]
+    t = miss_mmodedot(X, facs)
+    assert np.all(np.isnan(t[7:]))
+    assert np.all(~np.isnan(t[:7]))
+
+
 @pytest.mark.parametrize("Xshape", [(10, 9, 8), (10, 9, 8, 7), (10, 9, 8, 7, 6)])
 def test_miss_X_synthetic(Xshape):
     X, Y, _ = import_synthetic(Xshape, 4, 1, seed=np.random.randint(1000))
