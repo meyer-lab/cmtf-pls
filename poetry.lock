@@ -1110,7 +1110,7 @@ name = "tensorpack"
 version = "0.1.2"
 description = "A collection of tensor methods from the Meyer lab."
 optional = false
-python-versions = ">=3.12,<3.13"
+python-versions = ">=3.11,<3.13"
 files = []
 develop = false
 
@@ -1122,13 +1122,13 @@ seaborn = ">=0.11.2"
 svgutils = "^0.3.4"
 tensorly = "^0.8"
 tqdm = "^4.62.3"
-xarray = ">=2022.6.0"
+xarray = "^2024"
 
 [package.source]
 type = "git"
 url = "https://github.com/meyer-lab/tensorpack.git"
-reference = "python_update"
-resolved_reference = "770fca9bb00b31cb3b0bab94b2051fc59890b63b"
+reference = "HEAD"
+resolved_reference = "dd39e2da50b1f80c54132904f05cb9c0c800df6f"
 
 [[package]]
 name = "threadpoolctl"
@@ -1199,4 +1199,4 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13"
-content-hash = "75e35cf7ce916752e02d13281a72aa13b7cecdf37c5a0683f150c1f0192f761d"
+content-hash = "d201bce68ee8dbe6bc244e8ec029d54edad6970748a55998e249d3f2b4e5a592"
