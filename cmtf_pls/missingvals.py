@@ -29,10 +29,12 @@ def miss_mmodedot(X, facs, missX=None):
         missX = np.isnan(X)
     X = X.reshape(Xdim[0], -1)
     missX = missX.reshape(Xdim[0], -1)
-    t = np.zeros((Xdim[0],))
+    t = np.empty((Xdim[0],))
+    t.fill(np.nan)
     wkron = reduce(np.kron, facs)
     Wdim = wkron.shape[0]
     for i in range(Xdim[0]):
         m = np.where(~missX[i, :])[0]
-        t[i] = X[i, m] @ wkron[m] / len(m) * Wdim
+        if len(m) > 0:
+            t[i] = X[i, m] @ wkron[m] / len(m) * Wdim
     return t
