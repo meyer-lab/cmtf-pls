@@ -1,11 +1,12 @@
 """Test the functions for dealing with missing values"""
 
 import pytest
+import numpy as np
 from numpy.linalg import norm
 from tensorly.tenalg import multi_mode_dot
 
 from cmtf_pls.tpls import tPLS, calcR2X
-from cmtf_pls.missingvals import *
+from cmtf_pls.missingvals import miss_tensordot, miss_mmodedot
 from cmtf_pls.synthetic import import_synthetic
 
 
@@ -37,7 +38,7 @@ def test_miss_mmodedot():
     total_error = 0
     for _ in range(10):
         X = np.random.rand(10, 9, 8, 7)
-        facs = [np.random.rand(l) for l in X.shape[1:]]
+        facs = [np.random.rand(lf) for lf in X.shape[1:]]
         t = multi_mode_dot(X, facs, range(1, X.ndim))
         X[np.random.rand(*X.shape) < 0.1] = np.nan
         missX = np.isnan(X)

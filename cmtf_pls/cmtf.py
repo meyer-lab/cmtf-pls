@@ -60,10 +60,10 @@ class ctPLS(Mapping, metaclass=ABCMeta):
 
         self.factor_T = np.zeros((self.Y_shape[0], self.n_components))
         self.Xs_factors = [
-            [self.factor_T] + [np.zeros((l, self.n_components)) for l in X.shape[1:]]
+            [self.factor_T] + [np.zeros((lf, self.n_components)) for lf in X.shape[1:]]
             for X in Xs
         ]
-        self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
+        self.Y_factors = [np.zeros((lf, self.n_components)) for lf in Y.shape]
         self.coef_ = np.zeros(
             (self.n_components, self.n_components)
         )  # a upper triangular matrix

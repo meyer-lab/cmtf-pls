@@ -52,8 +52,8 @@ class tPLS(Mapping, metaclass=ABCMeta):
         self.X_dim = X.ndim
         self.X_shape = X.shape
         self.Y_shape = Y.shape
-        self.X_factors = [np.zeros((l, self.n_components)) for l in X.shape]
-        self.Y_factors = [np.zeros((l, self.n_components)) for l in Y.shape]
+        self.X_factors = [np.zeros((lf, self.n_components)) for lf in X.shape]
+        self.Y_factors = [np.zeros((lf, self.n_components)) for lf in Y.shape]
         # U takes the 1st column of Y
         self.R2X = np.zeros((self.n_components))
         self.R2Y = np.zeros((self.n_components))
