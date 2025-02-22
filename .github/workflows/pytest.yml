@@ -6,14 +6,13 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
+    - uses: actions/checkout@v4
+    - name: Setup rye
+      uses: eifinger/setup-rye@v4
       with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        installer-parallel: true
+        enable-cache: true
+        version: '0.39.0'
     - name: Install dependencies
-      run: poetry install --no-root
+      run: rye sync
     - name: Test with pytest
       run: make test

@@ -14,6 +14,7 @@ def test_tPLS_equivalence():
     pls1.fit([X], Y)
     assert np.allclose(pls0.R2X, pls1.R2Xs[0])
 
+
 @pytest.mark.parametrize("X0dim", [(10, 9, 8, 7), (10, 9, 8, 7, 6)])
 @pytest.mark.parametrize("X1dim", [(10, 8, 7), (10, 9, 8, 7)])
 @pytest.mark.parametrize("X2dim", [(10, 8), (10, 9, 8)])
@@ -24,12 +25,12 @@ def test_ctPLS_dimensions(X0dim, X1dim, X2dim):
     pls = ctPLS(6)
     pls.fit(Xs, Y)
     assert np.allclose(pls.factor_T, pls.transform(Xs))
-    #assert all([np.all(np.diff(R2X) >= 0.0) for R2X in pls.R2Xs])
+    # assert all([np.all(np.diff(R2X) >= 0.0) for R2X in pls.R2Xs])
     assert np.all(np.diff(pls.R2Y))
 
 
 def test_ctPLS_sanity_check():
-    """ Check the sanity check for missing data is functional. """
+    """Check the sanity check for missing data is functional."""
     dims = [(10, 9, 8), (10, 8, 7), (10, 7, 6)]
     Xs = [np.random.rand(*d) for d in dims]
     Y = np.random.rand(10, 5)
@@ -63,7 +64,7 @@ def test_ctPLS_increasing_R2Y_synthetic():
     pls = ctPLS(6)
     pls.fit(Xs, Y)
     # TODO: figure out how to keep R2Xs increasing
-    #assert all([np.all(np.diff(R2X) >= 0.0) for R2X in pls.R2Xs])
+    # assert all([np.all(np.diff(R2X) >= 0.0) for R2X in pls.R2Xs])
     assert np.all(np.diff(pls.R2Y))
 
 
@@ -74,6 +75,7 @@ def test_ctPLS_transform():
     pls = ctPLS(3)
     pls.fit(Xs, Y)
     assert np.allclose(pls.factor_T, pls.transform(Xs))
+
 
 def test_ctPLS_missingvals():
     dims = [(10, 9, 8, 7), (10, 8, 7)]
@@ -99,7 +101,10 @@ def test_ctPLS_missingvals_completeMissSample():
             dims = [(10, 9, 8), (10, 8, 7), (10, 7, 6)]
             latent_r = 2
             T = np.random.rand(10, latent_r)
-            Xs = [factors_to_tensor([T] + [np.random.rand(dd, latent_r) for dd in f[1:]]) for f in dims]
+            Xs = [
+                factors_to_tensor([T] + [np.random.rand(dd, latent_r) for dd in f[1:]])
+                for f in dims
+            ]
             Xs = [np.random.rand(*d) for d in dims]
             Y = np.random.rand(10, 5)
             pls = ctPLS(3)
