@@ -7,12 +7,7 @@ N_LATENT = 8
 
 
 def test_synthetic_dimensions():
-    x, y, cp_tensor = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT,
-        error=0
-    )
+    x, y, cp_tensor = import_synthetic(TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT, error=0)
 
     assert all([factor.shape[1] == N_LATENT for factor in cp_tensor.factors])
     assert cp_tensor.y_factor.shape[1] == N_LATENT
@@ -22,12 +17,7 @@ def test_synthetic_dimensions():
 
 def test_synthetic_test_dimensions():
     n_test = 10
-    x, y, cp_tensor = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT,
-        error=0
-    )
+    x, y, cp_tensor = import_synthetic(TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT, error=0)
     x_test, y_test, test_tensor = make_synthetic_test(cp_tensor, n_test, 0)
 
     assert cp_tensor.factors[0].shape[1] == test_tensor.factors[0].shape[1]
@@ -36,25 +26,13 @@ def test_synthetic_test_dimensions():
 
 def test_reproducibility():
     x1, y1, cp_tensor1 = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT,
-        error=0,
-        seed=42
+        TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT, error=0, seed=42
     )
     x2, y2, cp_tensor2 = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT,
-        error=0,
-        seed=42
+        TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT, error=0, seed=42
     )
     x3, y3, cp_tensor3 = import_synthetic(
-        TENSOR_DIMENSIONS,
-        N_RESPONSE,
-        N_LATENT,
-        error=0,
-        seed=43
+        TENSOR_DIMENSIONS, N_RESPONSE, N_LATENT, error=0, seed=43
     )
 
     assert np.array_equal(x1, x2)
@@ -64,17 +42,8 @@ def test_reproducibility():
 
 
 def test_shared_factor():
-    x, y, cp_tensor = import_synthetic(
-        (10, 10),
-        10,
-        10,
-        error=0,
-        seed=42
-    )
+    x, y, cp_tensor = import_synthetic((10, 10), 10, 10, error=0, seed=42)
 
     inv_x_factor = np.linalg.inv(cp_tensor.factors[1].T)
     inv_y_factor = np.linalg.inv(cp_tensor.y_factor.T)
-    assert np.allclose(
-        np.matmul(x, inv_x_factor),
-        np.matmul(y, inv_y_factor)
-    )
+    assert np.allclose(np.matmul(x, inv_x_factor), np.matmul(y, inv_y_factor))

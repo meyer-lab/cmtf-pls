@@ -2,8 +2,9 @@ import numpy as np
 import tensorly as tl
 
 
-def make_synthetic_test(cp_tensor: tl.cp_tensor, test_samples: int,
-                        error: float = 0, seed: int = 215):
+def make_synthetic_test(
+    cp_tensor: tl.cp_tensor, test_samples: int, error: float = 0, seed: int = 215
+):
     """
     Generates test set from given factors.
 
@@ -33,8 +34,13 @@ def make_synthetic_test(cp_tensor: tl.cp_tensor, test_samples: int,
     return x_test, y_test, test_tensor
 
 
-def import_synthetic(train_dimensions: tuple, n_response: int, n_latent: int,
-                     error: float = 0, seed: int = 215):
+def import_synthetic(
+    train_dimensions: tuple,
+    n_response: int,
+    n_latent: int,
+    error: float = 0,
+    seed: int = 215,
+):
     """
     Generates synthetic data.
 
