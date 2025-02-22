@@ -1,4 +1,5 @@
-""" A collection of functions that deal with missing values """
+"""A collection of functions that deal with missing values"""
+
 import numpy as np
 from functools import reduce
 
@@ -18,11 +19,12 @@ def miss_tensordot(X, u, missX=None):
             w[i] = X[m, i].T @ u[m] / len(m) * Xdim[0]
     return w.reshape(Xdim[1:])
 
+
 def miss_mmodedot(X, facs, missX=None):
     # Equivalent to multi_mode_dot(X, fac, range(1, X.ndim)), but X with missing values at missX
     # facs ~= [ff[:, a] for ff in self.X_factors[1:]]
     Xdim = X.shape
-    assert all([(Xdim[i+1], ff.shape[0]) for (i, ff) in enumerate(facs)])
+    assert all([(Xdim[i + 1], ff.shape[0]) for (i, ff) in enumerate(facs)])
     if missX is None:
         missX = np.isnan(X)
     X = X.reshape(Xdim[0], -1)

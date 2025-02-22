@@ -1,4 +1,5 @@
-""" Test the functions for dealing with missing values """
+"""Test the functions for dealing with missing values"""
+
 import pytest
 from numpy.linalg import norm
 from tensorly.tenalg import multi_mode_dot
@@ -6,7 +7,6 @@ from tensorly.tenalg import multi_mode_dot
 from cmtf_pls.tpls import tPLS, calcR2X
 from cmtf_pls.missingvals import *
 from cmtf_pls.synthetic import import_synthetic
-
 
 
 def test_miss_tensordot():
@@ -30,6 +30,7 @@ def test_miss_tensordot():
         assert norm(w - w1) / norm(w) < norm(w - w2) / norm(w) + 0.01
         total_error += norm(w - w1) / norm(w)
     assert total_error < 1.2
+
 
 def test_miss_mmodedot():
     # Test it is equivalent to multi_mode_dot(X, fac, range(1, X.ndim))
@@ -79,7 +80,7 @@ def test_miss_X_transform():
 
 
 def test_miss_X_imputation():
-    """ Test that PLSR can impute missing values """
+    """Test that PLSR can impute missing values"""
     X, Y, _ = import_synthetic((10, 9, 8, 7), 4, 3, seed=np.random.randint(1000))
     Xmiss = X.copy()
     missPos = np.random.rand(*X.shape) < 0.25
